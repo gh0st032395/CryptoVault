@@ -154,9 +154,25 @@ KeySlot {
   "p":           uint,        Argon2id parallelism
   "alg_id":      uint,        AEAD used for the wrap
   "nonce":       bytes(12),
-  "wrapped":     bytes(48)    AEAD(KEK, nonce, MasterSeed) ‖ tag
+  "wrapped":     bytes(48)    AEAD(KEK, nonce, aad = binding, MasterSeed) ‖ tag
 }
 ```
+
+The wrap's associated data ties it to its own slot:
+
+```
+binding = kind(1) ‖ alg_id(1) ‖ salt(16) ‖ m_kib(u32) ‖ t(u32) ‖ p(u32)
+```
+
+Strictly this is belt and braces — altering a cost parameter already changes the
+derived key, so a tampered slot would fail to unwrap regardless. It is specified
+so that a wrap cannot be lifted out of one slot and pasted into another with
+different settings, and so that such an attempt fails as an authentication
+failure rather than as a puzzling wrong password.
+
+`label` is deliberately **excluded** from the binding: renaming a slot must not
+require the password. It is covered by the configuration MAC in §3, so it still
+cannot be changed by anyone without the vault key.
 
 Consequences worth stating plainly, because this is the single design decision
 that most affects what the project can do later:
@@ -286,9 +302,24 @@ Layout to be specified in M6.
 ### 8.1 Algorithm
 
 ```
-ciphertext = AES-SIV(K_names, aad = dir_id, plaintext = name_utf8)
+K_siv      = HKDF-Expand(prk = K_names, info = "cv/names/siv/v1", L = 64)
+ciphertext = AES-256-SIV(K_siv, nonce = 0^16, aad = dir_id, plaintext = name_utf8)
 on_disk    = base64url_nopad(ciphertext) ‖ "." ‖ extension
 ```
+
+The ciphertext is `16 + len(name)` bytes: AES-SIV prepends the synthetic
+initialisation vector, which doubles as the authentication tag.
+
+Two details that look odd and are not:
+
+- **The SIV key is 64 bytes, not 32.** AES-256-SIV runs two keyed constructions
+  and needs double-width key material. Rather than making one branch of the key
+  hierarchy a different width from every other, `K_names` stays 32 bytes like
+  its siblings and is expanded here under its own label.
+- **The nonce is a constant zero.** With SIV the nonce is just one more
+  associated-data input, and the construction is specifically built to remain
+  secure when it repeats. Determinism is the requirement here, not an accident,
+  and SIV is the algorithm chosen because it makes determinism safe.
 
 AES-SIV is **deterministic**, which is required: opening `/Reports/2026.pdf`
 must compute the on-disk name directly, without listing and decrypting the whole

@@ -45,6 +45,8 @@ pub mod hierarchy;
 pub mod kdf;
 pub mod random;
 pub mod secret;
+pub mod siv;
+pub mod slot;
 
 pub use secret::{Key32, SecretBytes};
 
@@ -148,6 +150,30 @@ pub enum CryptoError {
     /// The algorithm identifier read from a file is not one this build knows.
     #[error("unknown algorithm identifier 0x{0:02x}")]
     UnknownAlgorithm(u8),
+
+    /// The slot-kind byte read from a vault configuration is not one this build
+    /// knows.
+    #[error("unknown key slot kind {0}")]
+    UnknownSlotKind(u8),
+
+    /// A key slot's stored fields are not the right shape.
+    ///
+    /// Distinct from [`CryptoError::DecryptionFailed`] on purpose: this means
+    /// the configuration is damaged, and no password will ever open it. Telling
+    /// a user to keep trying their password against a corrupted slot would be
+    /// cruel and useless.
+    #[error("the key slot is malformed: {reason}")]
+    MalformedSlot {
+        /// Which field is the wrong shape.
+        reason: &'static str,
+    },
+
+    /// The vault has no slot of the requested kind.
+    ///
+    /// Also distinct from a wrong credential: it means the vault was never set
+    /// up for this unlock method, so retrying cannot help.
+    #[error("this vault has no {0:?} slot")]
+    NoSuchSlot(crate::slot::SlotKind),
 }
 
 #[cfg(test)]
