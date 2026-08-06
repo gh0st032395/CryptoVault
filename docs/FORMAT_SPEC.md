@@ -197,7 +197,7 @@ attacker's either.
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│ HEADER PREFIX  (40 bytes, cleartext, authenticated as AAD)│
+│ HEADER PREFIX  (28 + nonce bytes, cleartext, AAD)         │
 ├───────────────────────────────────────────────────────────┤
 │ SEALED HEADER  (40 + meta_len bytes + 16 tag)             │
 ├───────────────────────────────────────────────────────────┤
@@ -205,7 +205,7 @@ attacker's either.
 └───────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 Header prefix — 40 bytes, cleartext
+### 6.2 Header prefix — cleartext
 
 | Offset | Size | Field | Notes |
 |---|---|---|---|
@@ -215,11 +215,23 @@ attacker's either.
 | 6 | 1 | `mode` | `0x01` live, `0x02` archived (§7) |
 | 7 | 1 | `reserved` | Must be `0x00`; readers reject anything else |
 | 8 | 16 | `file_id` | Random, **immutable for the life of the file** |
-| 24 | 12 | `nonce_hdr` | Fresh on every header write |
-| 36 | 4 | `meta_len` | Length of the metadata inside the sealed block, ≤ 64 KiB |
+| 24 | *N* | `nonce_hdr` | *N* = the algorithm's nonce length. Fresh on every header write |
+| 24+*N* | 4 | `meta_len` | Length of the metadata inside the sealed block, ≤ 64 KiB |
 
-The whole 40-byte prefix is the AAD of the sealed header, so none of it can be
-altered without detection.
+**The prefix is not a fixed size**, because the nonce is not: 12 bytes for
+AES-256-GCM, 24 for XChaCha20-Poly1305. Its total length is `28 + N`, so 40
+bytes for the default algorithm and 52 for the alternative.
+
+A reader must therefore take `alg_id` from offset 5 and size the rest of the
+header from it, never assume 12. Assuming would place `meta_len` — and with it
+every chunk offset in the file — twelve bytes off.
+
+`reserved` must be zero. It is how a later version signals a change an earlier
+build must not ignore, so a non-zero value stops the parse rather than being
+skipped over.
+
+The whole prefix is the associated data of the sealed header, so none of it can
+be altered without detection.
 
 ### 6.3 Sealed header
 
@@ -232,7 +244,8 @@ sealed = AEAD_encrypt(
 )
 ```
 
-Total header size = `40 + 32 + 8 + meta_len + 16` = **96 + `meta_len`**.
+Total header size = `(28 + N) + 32 + 8 + meta_len + 16` = **84 + `N` + `meta_len`**,
+which for AES-256-GCM's 12-byte nonce is **96 + `meta_len`**.
 
 `plain_size` lives inside the sealed block because an AEAD tag detects a
 *modified* file but not a *truncated* one. Without it, chopping the last chunk

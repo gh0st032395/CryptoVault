@@ -11,7 +11,7 @@
 //! corrupted vault.
 
 use crate::consts::{
-    CHUNK_OVERHEAD, CHUNK_PLAINTEXT_LEN, CHUNK_STORED_LEN, HEADER_PREFIX_LEN,
+    CHUNK_OVERHEAD, CHUNK_PLAINTEXT_LEN, CHUNK_STORED_LEN, HEADER_FIXED_PREFIX_LEN,
     HEADER_SEALED_FIXED_LEN, TAG_LEN,
 };
 
@@ -67,13 +67,25 @@ pub fn plaintext_len_of_chunk(chunk_index: u64, plain_size: u64) -> u64 {
     }
 }
 
-/// Total size of a file header, given the length of its metadata block.
+/// Length of the authenticated header prefix, nonce included.
+///
+/// The nonce length comes from the algorithm — 12 bytes for AES-GCM, 24 for
+/// XChaCha20-Poly1305 — so the prefix is not a constant. Reading a header means
+/// reading the algorithm byte first and sizing the rest from it.
+#[must_use]
+pub fn header_prefix_len(nonce_len: u32) -> u64 {
+    u64::from(HEADER_FIXED_PREFIX_LEN) + u64::from(nonce_len)
+}
+
+/// Total size of a file header.
 ///
 /// Layout: the authenticated prefix, then the sealed block holding the file key,
 /// the plaintext size and the metadata, then the authentication tag.
+///
+/// With AES-GCM's 12-byte nonce this is `96 + metadata_len`.
 #[must_use]
-pub fn header_len(metadata_len: u32) -> u64 {
-    u64::from(HEADER_PREFIX_LEN)
+pub fn header_len(nonce_len: u32, metadata_len: u32) -> u64 {
+    header_prefix_len(nonce_len)
         + u64::from(HEADER_SEALED_FIXED_LEN)
         + u64::from(metadata_len)
         + u64::from(TAG_LEN)
@@ -214,16 +226,32 @@ mod tests {
         }
     }
 
+    /// The AES-GCM nonce is 12 bytes, which is where the familiar 96 comes from.
     #[test]
-    fn header_length_is_ninety_six_plus_metadata() {
-        assert_eq!(header_len(0), 96);
-        assert_eq!(header_len(1), 97);
-        assert_eq!(header_len(1024), 96 + 1024);
+    fn header_length_with_an_aes_gcm_nonce_is_ninety_six_plus_metadata() {
+        assert_eq!(header_len(12, 0), 96);
+        assert_eq!(header_len(12, 1), 97);
+        assert_eq!(header_len(12, 1024), 96 + 1024);
+    }
+
+    /// XChaCha20-Poly1305 uses a 24-byte nonce, so its headers are 12 bytes
+    /// longer. The header layout has to be sized from the algorithm byte, not
+    /// assumed — getting this wrong would misplace every chunk in the file.
+    #[test]
+    fn a_longer_nonce_makes_a_longer_header() {
+        assert_eq!(header_len(24, 0), 108);
+        assert_eq!(header_len(24, 0) - header_len(12, 0), 12);
+    }
+
+    #[test]
+    fn the_prefix_is_the_fixed_part_plus_the_nonce() {
+        assert_eq!(header_prefix_len(12), 40);
+        assert_eq!(header_prefix_len(24), 52);
     }
 
     #[test]
     fn first_chunk_starts_right_after_the_header() {
-        let hdr = header_len(0);
+        let hdr = header_len(12, 0);
         assert_eq!(chunk_offset_in_file(0, hdr), Some(hdr));
         assert_eq!(
             chunk_offset_in_file(1, hdr),
@@ -238,7 +266,7 @@ mod tests {
 
     #[test]
     fn stored_length_accounts_for_header_and_per_chunk_overhead() {
-        let hdr = header_len(0);
+        let hdr = header_len(12, 0);
         let per_chunk = u64::from(CHUNK_OVERHEAD);
 
         assert_eq!(stored_len(0, hdr), Some(hdr));
@@ -261,7 +289,7 @@ mod tests {
     #[test]
     fn overhead_on_a_large_file_stays_below_a_tenth_of_a_percent() {
         let plain = 1024 * 1024 * 1024_u64; // 1 GiB
-        let hdr = header_len(0);
+        let hdr = header_len(12, 0);
         let stored = stored_len(plain, hdr).expect("1 GiB is far from overflowing");
         #[allow(
             clippy::cast_precision_loss,

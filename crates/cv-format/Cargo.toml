@@ -11,7 +11,9 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+ciborium.workspace = true
 cv-crypto.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 
 [lints]

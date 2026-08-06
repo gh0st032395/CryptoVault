@@ -57,6 +57,12 @@
 
 pub mod chunk;
 pub mod consts;
+pub mod content;
+pub mod header;
+pub mod metadata;
+
+pub use header::FileHeader;
+pub use metadata::FileMetadata;
 
 use thiserror::Error;
 
@@ -91,6 +97,70 @@ pub enum FormatError {
         /// Which quantity went out of range, and why it matters.
         reason: String,
     },
+
+    /// A reserved byte held a value other than zero.
+    ///
+    /// Reserved bytes are how a later version signals a change an earlier build
+    /// must not ignore. Skipping over one would mean reading a file under
+    /// assumptions its writer did not share.
+    #[error("reserved byte is 0x{0:02x}, not zero: this file was written by a later version")]
+    ReservedByteSet(u8),
+
+    /// The data ended before the structure being read did.
+    #[error("truncated: needed {needed} bytes, found {found}")]
+    Truncated {
+        /// Bytes the structure required.
+        needed: u64,
+        /// Bytes actually available.
+        found: usize,
+    },
+
+    /// A metadata block exceeded the ceiling the format allows.
+    ///
+    /// Checked against the limit *before* the value is used to size anything, so
+    /// a corrupted length field cannot turn a parse into an allocation storm.
+    #[error("metadata block is {len} bytes, the maximum is {max}")]
+    MetadataTooLarge {
+        /// Length found or produced.
+        len: usize,
+        /// Largest length the format allows.
+        max: u32,
+    },
+
+    /// A metadata block did not decode.
+    ///
+    /// Only reachable after the header has authenticated, so the cause is a bug
+    /// or a version mismatch rather than tampering: an attacker cannot produce
+    /// bytes that authenticate.
+    #[error("metadata could not be decoded: {reason}")]
+    MalformedMetadata {
+        /// What the decoder reported.
+        reason: String,
+    },
+
+    /// A chunk of plaintext was larger than a chunk can hold.
+    ///
+    /// Refused rather than split: splitting would put data in a chunk the reader
+    /// will look for at a different offset.
+    #[error("chunk is {len} bytes, the maximum is {max}")]
+    ChunkTooLarge {
+        /// Length supplied.
+        len: usize,
+        /// Largest plaintext a chunk can hold.
+        max: u32,
+    },
+
+    /// A write was attempted on a file that is not in live mode.
+    ///
+    /// Archived files are compressed and optionally carry parity, neither of
+    /// which survives an in-place write. Restoring the file to live mode is an
+    /// explicit user action.
+    #[error("this file is archived and cannot be written to until it is restored")]
+    NotWritable,
+
+    /// Something went wrong in the cryptographic layer.
+    #[error(transparent)]
+    Crypto(#[from] cv_crypto::CryptoError),
 }
 
 /// How the contents of a file are stored.
