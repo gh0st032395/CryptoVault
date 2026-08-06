@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/gh0st032395/CryptoVault/actions/workflows/ci.yml/badge.svg)](https://github.com/gh0st032395/CryptoVault/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#licence)
-[![Status](https://img.shields.io/badge/status-pre--alpha%20(M1)-orange.svg)](#project-status)
+[![Status](https://img.shields.io/badge/status-pre--alpha%20(M2)-orange.svg)](#project-status)
 
 [Italiano](README.it.md) · [Development plan](PLAN.md) · [Threat model](docs/THREAT_MODEL.md) · [Format specification](docs/FORMAT_SPEC.md)
 
@@ -18,11 +18,12 @@
 
 **CryptoVault does not work yet. Do not put real data anywhere near it.**
 
-Milestone **M1** is done: the cryptographic core and the on-disk format exist,
-are specified, and are covered by 229 tests, frozen format vectors and four fuzz
-targets. What does not exist yet is everything above them — no vault to open, no
-files to put in one, no interface. The first build worth using daily arrives at
-the end of M4; see the [roadmap](#roadmap).
+Milestone **M2** is done, and a vault now works — from a terminal. You can
+create one, put files in it, read them back, and check its integrity, with 320
+tests behind it. What does not exist yet is the application: no window, no file
+browser, no auto-lock, and no way to open a document in the program you
+normally use. The first build worth using daily arrives at the end of M4; see
+the [roadmap](#roadmap).
 
 This warning gets removed when it stops being true.
 
@@ -89,8 +90,8 @@ Full details in [`docs/FORMAT_SPEC.md`](docs/FORMAT_SPEC.md).
 |---|---|---|
 | ✅ | **M0** Foundations — workspace, CI, threat model, format specification | done |
 | ✅ | **M1** Cryptographic core and format, with frozen test vectors and fuzzing | done |
-| ⬜ | **M2** Vault, filesystem abstraction, internal CLI | next |
-| ⬜ | **M3** Desktop interface — browser, multi-vault, auto-lock | |
+| ✅ | **M2** Vault, filesystem abstraction, internal CLI | done |
+| ⬜ | **M3** Desktop interface — browser, multi-vault, auto-lock | next |
 | ⬜ | **M4** Opening files in external applications | ← *first genuinely usable build* |
 | ⬜ | **M5** Search, opt-in previews, sandboxed PDF viewer | |
 | ⬜ | **M6** Trash, per-file versioning, integrity check, archived mode | |

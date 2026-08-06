@@ -617,7 +617,13 @@ Non richiedono discussione, ma vanno messe a verbale:
 - [x] **M1 — Core crittografico e formato**: primitive (Argon2id, AEAD con agilità algoritmica,
       HKDF, AES-SIV), key slot, header e chunk, metadati, nomi cifrati, mappatura directory,
       `vault.cvconf` autenticato, vettori congelati e quattro target di fuzzing. 229 test.
-- [ ] **M2 — Vault, VFS e CLI interna**: il trait `VaultFs`, `DirectVaultFs`, i job di
-      import/export e i primi benchmark di scala.
+- [x] **M2 — Vault, VFS e CLI interna**: vault su disco con scritture atomiche, lettura e
+      scrittura a offset, il trait `VaultFs` con `DirectVaultFs`, e la CLI `cryptovault`
+      (init, ls, mkdir, add, get, rm, mv, verify, inspect). 320 test.
+      *Rimandato a M3:* i job di import/export con progresso e annullamento, e i benchmark
+      di scala con soglie in CI — al loro posto ci sono test di scala moderati (500 file in
+      una directory, 200 directory sugli shard).
+- [ ] **M3 — Interfaccia desktop**: Tauri + Svelte, browser dei file virtualizzato,
+      multi-vault, auto-lock.
 
 Ogni milestone completata aggiorna questa sezione e il CHANGELOG.

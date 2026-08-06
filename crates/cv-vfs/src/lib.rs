@@ -17,15 +17,18 @@
 //! Designing the interface this way from the first day is the difference between
 //! the virtual mount being a milestone and the virtual mount being a rewrite.
 //!
-//! # Status
+//! # What is here
 //!
-//! Milestone M0 defines [`VPath`], the validated path type that every other
-//! operation will take. The trait and its direct implementation land in M2.
+//! [`VPath`] is the validated path type every operation takes. [`VaultFs`] is
+//! the interface, and [`DirectVaultFs`] is the implementation that reads and
+//! writes the encrypted directory directly.
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod direct;
 pub mod path;
 
+pub use direct::{DirEntry, DirectVaultFs, VaultFs};
 pub use path::VPath;
 
 use thiserror::Error;
@@ -51,4 +54,53 @@ pub enum VfsError {
         /// Maximum accepted length in bytes.
         max: usize,
     },
+
+    /// Nothing is at that path.
+    #[error("no such entry: {path}")]
+    NotFound {
+        /// The path the caller asked about.
+        path: String,
+    },
+
+    /// Something is already at that path.
+    #[error("{path} already exists")]
+    AlreadyExists {
+        /// The path that collided.
+        path: String,
+    },
+
+    /// A directory was needed and something else was found.
+    #[error("{path} is not a directory")]
+    NotADirectory {
+        /// The path in question.
+        path: String,
+    },
+
+    /// A file was needed and a directory was found.
+    #[error("{path} is a directory")]
+    IsADirectory {
+        /// The path in question.
+        path: String,
+    },
+
+    /// The operation cannot be applied to the vault root.
+    #[error("the vault root cannot be created, renamed or removed")]
+    IsRoot,
+
+    /// A directory was about to be moved inside itself.
+    ///
+    /// The reference that names a directory lives in its parent. Moving the
+    /// directory underneath itself would put that reference inside the subtree
+    /// it points at, and nothing could reach either again.
+    #[error("cannot move {from} into {to}, which is inside it")]
+    WouldRecurse {
+        /// Where the entry is now.
+        from: String,
+        /// Where it was going.
+        to: String,
+    },
+
+    /// Something went wrong in the vault underneath.
+    #[error(transparent)]
+    Vault(#[from] cv_vault::VaultError),
 }

@@ -85,6 +85,37 @@ than all zeros, and canonical encoding is no longer needed.
 
 **The format is now frozen.** Changing it breaks the vectors on purpose.
 
+### Milestone M2 — Vault, filesystem abstraction and command-line tool
+
+**A vault can now be created, filled and read back.** From a terminal, not from
+a window — the desktop interface is M3 — but the thing itself works.
+
+#### Added
+
+- **`cv-vault`** — creating and opening a vault, directories, entries, and
+  reading and writing files at arbitrary offsets. Writing past the end
+  zero-fills the gap with real encrypted chunks rather than leaving a hole,
+  which would read back as a chunk that never existed. Atomic writes
+  throughout: temporary in the same directory, `fsync`, `rename`.
+- **`cv-vfs`** — the `VaultFs` trait and `DirectVaultFs`. Paths in, vault
+  operations out; the offset-based shape FUSE and WinFsp expect.
+- **`cryptovault`** — `init`, `ls`, `mkdir`, `add`, `get`, `rm`, `mv`,
+  `verify`, `inspect`. Exit codes are a contract: 0 success, 1 the operation
+  failed, 2 a bad command line, 3 wrong password.
+- **`verify`** walks a whole vault and checks every authentication tag without
+  writing a byte of plaintext anywhere.
+- **`inspect`** describes a vault *without* a password, because it is the
+  command for a vault that will not open.
+
+#### Notes
+
+- Locking a vault is dropping it. There is no locked handle to use by accident.
+- The command-line tool is the project's own test instrument and is not yet
+  documented in the user manual or supported for scripting.
+- The password comes from an environment variable or standard input. There is
+  no interactive prompt yet, and the help text says plainly that an environment
+  variable is a poor place for a password.
+
 ---
 
 [Unreleased]: https://github.com/gh0st032395/CryptoVault/commits/main
