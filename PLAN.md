@@ -614,6 +614,10 @@ Non richiedono discussione, ma vanno messe a verbale:
 - [x] Piano approvato nelle decisioni fondamentali.
 - [x] **M0 — Fondamenta**: repository, workspace Cargo, CI sui tre OS, licenze, documentazione,
       THREAT_MODEL, bozza di FORMAT_SPEC, scheletro del manuale utente.
-- [ ] **M1 — Core crittografico e formato**: si parte dal port di `cv-crypto`.
+- [x] **M1 — Core crittografico e formato**: primitive (Argon2id, AEAD con agilità algoritmica,
+      HKDF, AES-SIV), key slot, header e chunk, metadati, nomi cifrati, mappatura directory,
+      `vault.cvconf` autenticato, vettori congelati e quattro target di fuzzing. 229 test.
+- [ ] **M2 — Vault, VFS e CLI interna**: il trait `VaultFs`, `DirectVaultFs`, i job di
+      import/export e i primi benchmark di scala.
 
 Ogni milestone completata aggiorna questa sezione e il CHANGELOG.
