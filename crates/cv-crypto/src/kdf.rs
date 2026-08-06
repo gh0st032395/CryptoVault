@@ -20,7 +20,17 @@
 //! [`Argon2Params::MIN_MEMORY_KIB`]: a weak machine is not a reason to hand an
 //! attacker a cheap password guess.
 
+use argon2::{Algorithm, Argon2, Params, Version};
+
 use crate::CryptoError;
+use crate::secret::Key32;
+
+/// Length of the salt Argon2id is given, in bytes.
+///
+/// The salt is random per key slot, not per vault. Two slots with the same
+/// password must not produce the same wrapped seed, or the fact that they match
+/// would be visible on disk.
+pub const SALT_LEN: usize = 16;
 
 /// Argon2id cost parameters for deriving the key-encryption key.
 ///
@@ -154,6 +164,60 @@ impl Default for Argon2Params {
     }
 }
 
+/// Derives the key-encryption key from a password.
+///
+/// The result unwraps the master seed held in a key slot, and nothing else. It
+/// never encrypts user data, so changing a password re-runs this function once
+/// and rewrites 48 bytes.
+///
+/// The caller owns the password bytes and is responsible for wiping them. This
+/// function does not take ownership, because the password usually arrives from
+/// a user-interface buffer whose lifetime it has no business managing.
+///
+/// # Errors
+///
+/// - [`CryptoError::WrongSaltLength`] if the salt is not [`SALT_LEN`] bytes.
+/// - [`CryptoError::InvalidKdfParams`] if Argon2 rejects the parameters.
+/// - [`CryptoError::KeyDerivationFailed`] if the derivation itself fails —
+///   in practice, when the machine cannot allocate the memory the parameters
+///   ask for, which is what happens to a vault created on a workstation and
+///   opened on something much smaller.
+pub fn derive_kek(
+    password: &[u8],
+    salt: &[u8],
+    params: Argon2Params,
+) -> Result<Key32, CryptoError> {
+    if salt.len() != SALT_LEN {
+        return Err(CryptoError::WrongSaltLength {
+            expected: SALT_LEN,
+            found: salt.len(),
+        });
+    }
+
+    let argon_params = Params::new(
+        params.memory_kib(),
+        params.iterations(),
+        params.parallelism(),
+        Some(Key32::zeroed().len()),
+    )
+    .map_err(|source| CryptoError::InvalidKdfParams {
+        reason: source.to_string(),
+    })?;
+
+    let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, argon_params);
+
+    // Derived straight into the wrapper, so the key never sits in a plain array
+    // that nothing would wipe.
+    let mut kek = Key32::zeroed();
+    argon
+        .hash_password_into(password, salt, kek.expose_mut())
+        .map_err(|source| CryptoError::KeyDerivationFailed {
+            reason: source.to_string(),
+        })?;
+
+    Ok(kek)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -225,5 +289,102 @@ mod tests {
     #[test]
     fn an_all_zero_configuration_is_rejected() {
         assert!(Argon2Params::new(0, 0, 0).is_err());
+    }
+
+    // --- derive_kek ------------------------------------------------------
+    //
+    // These run at the accepted *minimum* cost rather than the default. The
+    // default profile is calibrated to take about a second, which is the point
+    // of it, and a suite that spends a second per derivation stops being run.
+    // The minimum is still a real Argon2id derivation, which is what is being
+    // tested here.
+
+    fn cheap_params() -> Argon2Params {
+        Argon2Params::new(
+            Argon2Params::MIN_MEMORY_KIB,
+            Argon2Params::MIN_ITERATIONS,
+            Argon2Params::MIN_PARALLELISM,
+        )
+        .expect("the minimum is by definition within bounds")
+    }
+
+    const SALT_A: [u8; SALT_LEN] = [0x11; SALT_LEN];
+    const SALT_B: [u8; SALT_LEN] = [0x22; SALT_LEN];
+
+    #[test]
+    fn derivation_is_deterministic() {
+        let first = derive_kek(b"correct horse battery staple", &SALT_A, cheap_params()).unwrap();
+        let second = derive_kek(b"correct horse battery staple", &SALT_A, cheap_params()).unwrap();
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn a_different_password_gives_a_different_key() {
+        let a = derive_kek(b"password one", &SALT_A, cheap_params()).unwrap();
+        let b = derive_kek(b"password two", &SALT_A, cheap_params()).unwrap();
+        assert_ne!(a, b);
+    }
+
+    /// Two key slots protected by the same password must not produce the same
+    /// wrapped seed; if they did, the fact that they match would be readable
+    /// straight off the disk.
+    #[test]
+    fn a_different_salt_gives_a_different_key() {
+        let a = derive_kek(b"same password", &SALT_A, cheap_params()).unwrap();
+        let b = derive_kek(b"same password", &SALT_B, cheap_params()).unwrap();
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn different_cost_parameters_give_a_different_key() {
+        let cheap = derive_kek(b"same password", &SALT_A, cheap_params()).unwrap();
+        let dearer = derive_kek(
+            b"same password",
+            &SALT_A,
+            Argon2Params::new(Argon2Params::MIN_MEMORY_KIB, 3, 1).unwrap(),
+        )
+        .unwrap();
+        assert_ne!(cheap, dearer);
+    }
+
+    #[test]
+    fn a_one_character_password_change_changes_the_whole_key() {
+        let a = derive_kek(b"passwordA", &SALT_A, cheap_params()).unwrap();
+        let b = derive_kek(b"passwordB", &SALT_A, cheap_params()).unwrap();
+
+        let differing = a
+            .expose()
+            .iter()
+            .zip(b.expose().iter())
+            .filter(|(left, right)| left != right)
+            .count();
+        assert!(differing > 20, "only {differing} of 32 bytes changed");
+    }
+
+    #[test]
+    fn an_empty_password_still_derives() {
+        // Refusing an empty password is the interface's job, not the
+        // primitive's. This test exists so nobody "fixes" it into a panic.
+        assert!(derive_kek(b"", &SALT_A, cheap_params()).is_ok());
+    }
+
+    #[test]
+    fn a_salt_of_the_wrong_length_is_rejected() {
+        for len in [0_usize, 8, 15, 17, 32] {
+            let err = derive_kek(b"pw", &vec![0_u8; len], cheap_params()).unwrap_err();
+            assert_eq!(
+                err,
+                CryptoError::WrongSaltLength {
+                    expected: SALT_LEN,
+                    found: len
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn a_very_long_password_is_accepted() {
+        let long = vec![b'x'; 4096];
+        assert!(derive_kek(&long, &SALT_A, cheap_params()).is_ok());
     }
 }
