@@ -149,6 +149,66 @@ place; the memory locking is not, so a derived key can be paged to disk.
 *Revisit when:* M10 at the latest. It needs one `unsafe` call per platform and a
 graceful fallback where the operating system refuses.
 
+### 🟠 R-13 — The interface runs on a demonstration backend
+**From:** M3 · **Due:** M3
+
+`ui/src/lib/backend.ts` keeps a tree in memory. Nothing in the interface has
+ever spoken to a real vault, so every screen is unproven against real latency,
+real errors, and real directories.
+
+*Revisit when:* the Tauri wiring lands, which is the rest of M3. The boundary is
+one interface, so the swap is contained — but "it worked against the mock" is
+not evidence of anything.
+
+### 🟠 R-14 — The file list is not virtualised
+**From:** M3 · **Due:** M3
+
+Every row is rendered. The plan calls for virtualisation from the start
+precisely so it does not have to be retrofitted, and a directory of 10 000
+entries will make the current list unusable.
+
+*Revisit when:* before M3 closes, and certainly before anyone points the
+interface at a large vault.
+
+### 🟡 R-15 — Auto-lock has one policy, not three
+**From:** M3 · **Due:** M3
+
+The plan settled on three user-selectable policies (warn and force, force
+immediately, never while files are open). Only the default is implemented, and
+it is not configurable.
+
+*Revisit when:* the settings panel grows past appearance and language.
+
+### 🟡 R-16 — Tooltips do not avoid the window edge
+**From:** M3 · **Due:** M3
+
+They render centred above or below their trigger with no collision detection, so
+one near the right edge of a narrow window will overflow.
+
+*Revisit when:* the window can be resized small, or a tooltip appears in a
+sidebar. Neither is true yet.
+
+### 🟡 R-17 — The password strength meter is a heuristic
+**From:** M3 · **Due:** —
+
+Length and character variety, nothing more. It cannot tell that
+"Password123!" is on every wordlist. The tooltip beside it says so, which is the
+honest minimum, but a real estimator (zxcvbn or similar) would be better — at
+the cost of a dependency and a dictionary.
+
+*Revisit when:* deciding what goes into the release. Registered so the tradeoff
+is a decision rather than an omission.
+
+### 🟡 R-18 — Vite's hot reload does not work in development
+**From:** M3 · **Due:** —
+
+The content security policy sets `connect-src 'none'`, which blocks Vite's
+websocket. The policy is correct and the blocked connection in the console is
+the policy working; the cost is that changes need a manual reload.
+
+*Revisit when:* it becomes annoying enough. A development-only relaxation is
+possible and must never reach a build.
+
 ---
 
 ## Resolved
