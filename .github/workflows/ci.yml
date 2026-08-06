@@ -52,7 +52,7 @@ jobs:
           cargo --version
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry/index
@@ -104,7 +104,7 @@ jobs:
 
       - name: Cache cargo tools
         id: cache-tools
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/bin
           key: cargo-tools-deny-audit-v1
