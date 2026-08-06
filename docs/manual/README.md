@@ -41,6 +41,17 @@ software that does not exist is worse than no manual.
 | 12 What CryptoVault does not protect against | — | written |
 | 13 Troubleshooting | M10 | pending |
 
+## What is deliberately not in here
+
+The `cryptovault` command-line tool. It exists and it works, but it is the
+project's own test instrument rather than a product: its command surface is
+still moving, and documenting it in a user manual would promise a stability
+nobody should rely on yet. Its `--help` output is its documentation until it
+ships as a supported tool, after the desktop release.
+
+Recorded here rather than left as a silent gap, so that nobody has to wonder
+whether it was forgotten.
+
 ## Writing style
 
 - **Second person, plain language.** "Choose a folder", not "the user selects a

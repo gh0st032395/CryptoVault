@@ -212,6 +212,13 @@ dependencies = [
 [[package]]
 name = "cv-cli"
 version = "0.1.0"
+dependencies = [
+ "cv-crypto",
+ "cv-format",
+ "cv-vault",
+ "cv-vfs",
+ "tempfile",
+]
 
 [[package]]
 name = "cv-crypto"

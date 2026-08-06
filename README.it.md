@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/gh0st032395/CryptoVault/actions/workflows/ci.yml/badge.svg)](https://github.com/gh0st032395/CryptoVault/actions/workflows/ci.yml)
 [![Licenza](https://img.shields.io/badge/licenza-MIT%20OR%20Apache--2.0-blue.svg)](#licenza)
-[![Stato](https://img.shields.io/badge/stato-pre--alpha%20(M1)-orange.svg)](#stato-del-progetto)
+[![Stato](https://img.shields.io/badge/stato-pre--alpha%20(M2)-orange.svg)](#stato-del-progetto)
 
 [English](README.md) · [Piano di sviluppo](PLAN.md) · [Modello di minaccia](docs/THREAT_MODEL.md) · [Specifica del formato](docs/FORMAT_SPEC.md)
 
@@ -18,12 +18,12 @@
 
 **CryptoVault non funziona ancora. Non avvicinargli dati reali.**
 
-La milestone **M1** è chiusa: il core crittografico e il formato su disco
-esistono, sono specificati e sono coperti da 229 test, vettori congelati e
-quattro target di fuzzing. Quello che non esiste ancora è tutto ciò che ci sta
-sopra — nessun vault da aprire, nessun file da metterci dentro, nessuna
-interfaccia. La prima build che vale la pena usare tutti i giorni arriva a fine
-M4; vedi la [roadmap](#roadmap).
+La milestone **M2** è chiusa e un vault ora funziona — da terminale. Puoi
+crearne uno, metterci dei file, rileggerli e verificarne l'integrità, con 320
+test alle spalle. Quello che non esiste ancora è l'applicazione: nessuna
+finestra, nessun browser dei file, nessun auto-lock, e nessun modo di aprire un
+documento con il programma che usi di solito. La prima build che vale la pena
+usare tutti i giorni arriva a fine M4; vedi la [roadmap](#roadmap).
 
 Questo avviso sparirà quando smetterà di essere vero.
 
@@ -93,8 +93,8 @@ Tutti i dettagli in [`docs/FORMAT_SPEC.md`](docs/FORMAT_SPEC.md).
 |---|---|---|
 | ✅ | **M0** Fondamenta — workspace, CI, modello di minaccia, specifica del formato | fatta |
 | ✅ | **M1** Core crittografico e formato, con vettori di test congelati e fuzzing | fatta |
-| ⬜ | **M2** Vault, astrazione filesystem, CLI interna | prossima |
-| ⬜ | **M3** Interfaccia desktop — browser, multi-vault, auto-lock | |
+| ✅ | **M2** Vault, astrazione filesystem, CLI interna | fatta |
+| ⬜ | **M3** Interfaccia desktop — browser, multi-vault, auto-lock | prossima |
 | ⬜ | **M4** Apertura dei file con applicazioni esterne | ← *prima build davvero usabile* |
 | ⬜ | **M5** Ricerca, anteprime opt-in, viewer PDF isolato | |
 | ⬜ | **M6** Cestino, versioni per file, verifica integrità, modalità archiviata | |

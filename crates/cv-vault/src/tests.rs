@@ -574,6 +574,61 @@ fn nesting_depth_is_not_visible_on_disk() {
     );
 }
 
+// --- scale -----------------------------------------------------------------
+
+/// A directory with many entries. Not a benchmark — it is here because the
+/// sharding, the listing and the name encoding all have to keep working when a
+/// directory stops being small, and "many files in one folder" is the shape
+/// that breaks naive designs.
+///
+/// Five hundred rather than fifty thousand: enough to exercise the sharding and
+/// the listing path, fast enough that nobody starts skipping the test suite.
+/// The full scale benchmarks, with thresholds in CI, are their own piece of work.
+#[test]
+fn a_directory_with_many_entries_still_works() {
+    let fixture = Fixture::new();
+    let count = 500;
+
+    for i in 0..count {
+        write_file(
+            &fixture.vault,
+            fixture.root,
+            &format!("file-{i:04}.txt"),
+            format!("contents of {i}").as_bytes(),
+        );
+    }
+
+    let listing = fixture.vault.read_dir(fixture.root).unwrap();
+    assert_eq!(listing.len(), count);
+    assert_eq!(listing[0].name, "file-0000.txt");
+    assert_eq!(listing[count - 1].name, "file-0499.txt");
+
+    // Lookups stay direct: no scan is needed to find one of five hundred.
+    assert_eq!(
+        read_file(&fixture.vault, fixture.root, "file-0250.txt"),
+        b"contents of 250"
+    );
+}
+
+/// Many directories must spread across the shards rather than piling into one,
+/// which is the whole reason the shard exists.
+#[test]
+fn many_directories_spread_across_the_shards() {
+    let fixture = Fixture::new();
+    for i in 0..200 {
+        fixture
+            .vault
+            .create_dir(fixture.root, &format!("dir-{i:03}"))
+            .unwrap();
+    }
+
+    let shards = fs::read_dir(fixture.path().join("d")).unwrap().count();
+    assert!(
+        shards > 100,
+        "200 directories landed in only {shards} shards"
+    );
+}
+
 fn walk(path: &Path, found: &mut Vec<(PathBuf, Vec<u8>)>) {
     let Ok(listing) = fs::read_dir(path) else {
         return;

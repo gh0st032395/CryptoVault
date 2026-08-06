@@ -641,6 +641,7 @@ impl Vault {
     ///
     /// Joined component by component rather than as one string, so the `/` in
     /// the vault-relative path never reaches a Windows API as a literal.
+    #[cfg_attr(not(test), allow(dead_code, reason = "used by the crate's tests"))]
     fn dir_disk_path(&self, dir: DirId) -> PathBuf {
         let relative = dirmap::dir_path(&self.keys.mac, &dir).unwrap_or_else(|_| {
             // dir_path only fails on a wrong-length identifier, and DirId is a
