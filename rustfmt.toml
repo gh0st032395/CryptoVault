@@ -1,0 +1,7 @@
+# Formatting is not a matter of taste here: it is enforced by CI so that diffs
+# only ever contain real changes.
+edition = "2024"
+max_width = 100
+use_field_init_shorthand = true
+use_try_shorthand = true
+newline_style = "Unix"

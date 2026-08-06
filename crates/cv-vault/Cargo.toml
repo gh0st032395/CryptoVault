@@ -1,0 +1,17 @@
+[package]
+name = "cv-vault"
+description = "Vault lifecycle for CryptoVault: creation, unlocking, locking, directory mapping"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true

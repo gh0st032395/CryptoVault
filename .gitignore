@@ -1,0 +1,63 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/apple/
+src-tauri/gen/android/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.recommended.json
+*.swp
+
+# --- Security: never commit any of these ---------------------------------
+# Test vaults, key material and anything that could contain real user data.
+# A committed vault is a committed secret, even if it is "just a test".
+*.cvf
+*.cvd
+*.cvn
+*.cvarchive
+vault.cvconf
+/test-vaults/
+/benchvaults/
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+.env
+.env.*
+!.env.example
+
+# Build/CI local artifacts
+/coverage/
+/fuzz/artifacts/
+/fuzz/corpus/
+/fuzz/target/
+*.profraw
+*.profdata

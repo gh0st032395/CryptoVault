@@ -1,0 +1,90 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/cv-crypto",
+    "crates/cv-format",
+    "crates/cv-vault",
+    "crates/cv-vfs",
+    "crates/cv-ops",
+    "crates/cv-render",
+    "crates/cv-cli",
+]
+
+# Metadata shared by every crate, so version and licence never drift apart.
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+license = "MIT OR Apache-2.0"
+authors = ["CryptoVault contributors"]
+repository = "https://github.com/gh0st032395/CryptoVault"
+homepage = "https://github.com/gh0st032395/CryptoVault"
+keywords = ["encryption", "vault", "privacy", "cryptography"]
+categories = ["cryptography", "filesystem"]
+
+[workspace.dependencies]
+# Internal crates. Dependencies flow one way only:
+#   cv-cli ──┐
+#            ├─> cv-ops ─> cv-vfs ─> cv-vault ─> cv-format ─> cv-crypto
+#   Tauri  ──┘
+# Nothing below cv-ops is allowed to know that a GUI exists.
+cv-crypto = { path = "crates/cv-crypto", version = "0.1.0" }
+cv-format = { path = "crates/cv-format", version = "0.1.0" }
+cv-vault = { path = "crates/cv-vault", version = "0.1.0" }
+cv-vfs = { path = "crates/cv-vfs", version = "0.1.0" }
+cv-ops = { path = "crates/cv-ops", version = "0.1.0" }
+
+# Third-party. Kept deliberately small: in a security tool every dependency is
+# code you are asking your users to trust.
+thiserror = "2.0"
+
+# Lints applied to every crate in the workspace. These are conditions of merge,
+# not suggestions; CI runs with warnings denied.
+[workspace.lints.rust]
+missing_docs = "deny"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+# `deny` rather than `forbid`: a handful of call sites (memory locking, platform
+# APIs) will legitimately need `unsafe`. Each one must opt in explicitly with an
+# `#[allow(unsafe_code)]` carrying a comment that justifies it.
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Documentation here is deliberately prose: it explains *why* a design is what it
+# is, and it names products (CryptoVault, Cryptera, WinFsp, OneDrive) constantly.
+# Backticking every proper noun would make that prose harder to read, not easier.
+doc_markdown = "allow"
+# A panic in a vault is data the user cannot reach any more. Error paths are
+# handled, never assumed away. Tests opt out of these locally.
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+todo = "warn"
+unimplemented = "warn"
+# Silent truncation in offset and chunk-index arithmetic would be a correctness
+# bug in the file format, so make the compiler point it out.
+cast_possible_truncation = "deny"
+cast_sign_loss = "deny"
+cast_possible_wrap = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "warn"
+
+# Release builds: optimise, but keep overflow checks on. A wrapped integer in
+# chunk arithmetic must abort, never silently address the wrong block.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+overflow-checks = true
+
+# Argon2id is unusable at interactive speed in a debug build, so the KDF and the
+# ciphers are always optimised, even while developing.
+[profile.dev.package."*"]
+opt-level = 2

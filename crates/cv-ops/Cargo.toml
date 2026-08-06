@@ -1,0 +1,17 @@
+[package]
+name = "cv-ops"
+description = "Long-running vault operations: import, export, external-app sessions, search, backup"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,7 @@
+# Pinned toolchain: every developer and every CI runner builds CryptoVault with
+# the exact same compiler. For a project whose output format must stay
+# bit-for-bit stable, "it works on my machine" is not an acceptable failure mode.
+[toolchain]
+channel = "1.96.0"
+components = ["rustfmt", "clippy", "rust-src"]
+profile = "default"
