@@ -269,6 +269,10 @@ dependencies = [
 name = "cv-vfs"
 version = "0.1.0"
 dependencies = [
+ "cv-crypto",
+ "cv-format",
+ "cv-vault",
+ "tempfile",
  "thiserror",
 ]
 

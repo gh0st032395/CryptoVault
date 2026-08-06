@@ -11,7 +11,13 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
+cv-format.workspace = true
+cv-vault.workspace = true
 thiserror.workspace = true
+
+[dev-dependencies]
+cv-crypto.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true
