@@ -56,6 +56,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 pub mod chunk;
+pub mod config;
 pub mod consts;
 pub mod content;
 pub mod dirmap;
@@ -175,6 +176,21 @@ pub enum FormatError {
         /// Length actually supplied.
         found: usize,
     },
+
+    /// The vault configuration could not be read.
+    #[error("the vault configuration is malformed: {reason}")]
+    MalformedConfig {
+        /// What was wrong with it.
+        reason: &'static str,
+    },
+
+    /// The vault configuration failed its authentication check.
+    ///
+    /// Somebody without the vault key altered it — most usefully, by lowering
+    /// the key-derivation cost or clearing the sealed policy so that the next
+    /// unlock proceeds on weaker terms. Refusing is the only safe response.
+    #[error("the vault configuration has been altered and cannot be trusted")]
+    ConfigNotAuthentic,
 
     /// Something went wrong in the cryptographic layer.
     #[error(transparent)]

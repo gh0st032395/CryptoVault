@@ -16,6 +16,7 @@ cv-crypto.workspace = true
 data-encoding.workspace = true
 hmac.workspace = true
 serde.workspace = true
+serde_bytes.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 

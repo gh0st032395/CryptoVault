@@ -1,8 +1,8 @@
 # CryptoVault Format Specification
 
 **Format version:** 1
-**Document status:** Draft — milestone M0. Sections marked *(reserved)* are named
-but not yet fully specified.
+**Document status:** Milestone M1 — sections 1 to 6 and 8 to 10 are implemented
+and tested. Sections marked *(reserved)* are named but not yet fully specified.
 **Last updated:** 2026-08-06
 
 ---
@@ -82,27 +82,52 @@ metadata format is already CBOR, and a second serialisation format would mean a
 second parser to fuzz for no real gain. `cryptovault inspect` prints it in
 readable form for disaster recovery.
 
+The file is a two-element array:
+
+```
+cvconf = [ body: bstr, mac: bstr(32) ]
+mac    = HMAC-SHA256(K_mac, body)
+```
+
+`body` is the CBOR encoding of the configuration below, stored as an opaque byte
+string:
+
 ```
 {
   "magic":        "CVCONF1",          text, constant
   "format":       1,                  uint, format version
-  "vault_id":     bytes(16),          random, identifies the vault across devices
+  "vault_id":     bytes(16),          random; identifies the vault, and is the
+                                      root directory's dir_id (§9.1)
   "created":      uint,               Unix seconds, informational
   "alg_id":       1,                  uint, content AEAD selector
-  "policy": {
-    "sealed":     bool,               true = no plaintext may leave the vault (§12)
-  },
-  "slots":        [ KeySlot, ... ],   one per unlock method (§5)
-  "mac":          bytes(32)           HMAC-SHA256 over the canonical encoding of
-                                      every field above, keyed with K_mac
+  "sealed":       bool,               true = no plaintext may leave the vault (§12)
+  "slots":        [ KeySlot, ... ]    one per unlock method (§5)
 }
 ```
 
-The `mac` field is what stops an attacker with disk access from weakening the
-vault: lowering the Argon2id parameters, switching `alg_id`, or clearing
-`policy.sealed` all invalidate it, and the unlock fails rather than proceeding
-with weaker settings. It is verified **after** a slot has been unwrapped, since
-`K_mac` derives from the master seed.
+**Why the MAC covers a byte string rather than a structure.** Authenticating a
+structure requires a canonical encoding, and canonicalisation rules are a
+well-known source of subtle bugs — two encoders disagreeing by one byte produce
+an authentication failure nobody can explain. Wrapping the body as `bstr` means
+the MAC covers exactly the bytes on disk. There is nothing to canonicalise.
+
+The MAC is what stops an attacker with disk access from weakening a vault:
+lowering the Argon2id cost, switching `alg_id`, or clearing `sealed` all
+invalidate it, and the unlock fails rather than proceeding on weaker terms.
+
+### 3.1 The order of operations at unlock
+
+`K_mac` derives from the master seed, and the master seed is wrapped inside this
+very file. So the MAC can only be checked **after** a slot has been opened:
+
+1. Parse `body` without trusting it, to reach the slots.
+2. Unwrap a slot with the credential → master seed.
+3. Derive the sub-keys, including `K_mac`.
+4. **Verify the MAC.** If it fails, refuse.
+
+Step 4 is the one an implementation can silently omit, and omitting it makes the
+whole MAC decorative. Implementations must not expose a path that returns usable
+keys without it.
 
 ---
 
@@ -498,8 +523,8 @@ Tracked here until resolved, then moved into the body of the specification.
 1. **Size padding.** Padding file sizes to fixed buckets would hide the exact
    size from a cloud provider, at a cost in storage and sync traffic. Not
    decided; currently not done, and disclosed in the threat model.
-2. **Canonical CBOR encoding.** The MAC in §3 requires one, and the exact rules
-   need pinning before M1 ships.
+2. ~~**Canonical CBOR encoding.**~~ Resolved in M1: the MAC covers the body as
+   an opaque byte string, so no canonical encoding is needed.
 3. ~~**Root `dir_id`.**~~ Resolved in M1: the root uses `vault_id`, so two
    vaults do not put their root in the same relative place.
 4. **Archived mode layout** — M6.
