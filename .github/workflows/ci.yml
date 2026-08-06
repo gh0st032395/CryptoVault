@@ -7,6 +7,13 @@
 # Only first-party GitHub actions are used. Every third-party action is code
 # running with access to this repository, and for a security project that is a
 # supply-chain dependency worth doing without.
+#
+# They are pinned to v4 rather than the newest majors deliberately. v7/v6 were
+# tried and repeatedly failed to resolve at "Set up job" with an internal error
+# on GitHub's side, on different runners each time. v4 is the most widely used
+# version in existence and is cached everywhere. The cost is a Node 20
+# deprecation warning; the alternative was a pipeline that failed at random,
+# which is worse, because it teaches you to ignore a red run.
 
 name: CI
 
@@ -16,10 +23,16 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A new push supersedes the previous run on the same branch.
+# Runs on the same branch queue rather than cancel each other.
+#
+# `cancel-in-progress: true` looks tidier and interacts badly with re-running
+# failed jobs: the re-run re-enters the group and cancels its own jobs, which
+# turns "one flaky job" into "the whole run keeps dying" and is impossible to
+# tell apart from a real failure. Runner minutes are cheap; a CI result nobody
+# trusts is not.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -42,7 +55,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       # The toolchain version comes from rust-toolchain.toml; rustup installs it
       # on first use. Printing it makes the log say which one actually ran.
@@ -52,7 +65,7 @@ jobs:
           cargo --version
 
       - name: Cache cargo
-        uses: actions/cache@v6
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index
@@ -72,10 +85,10 @@ jobs:
     name: Format, lints and documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Cache cargo
-        uses: actions/cache@v6
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index
@@ -100,11 +113,11 @@ jobs:
     name: Licences, advisories and dependency sources
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Cache cargo tools
         id: cache-tools
-        uses: actions/cache@v6
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/bin
           key: cargo-tools-deny-audit-v1
@@ -132,7 +145,7 @@ jobs:
       run:
         working-directory: ui
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -156,7 +169,7 @@ jobs:
     name: Repository hygiene
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: No test vaults or key material committed
         run: |

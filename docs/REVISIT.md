@@ -209,6 +209,18 @@ the policy working; the cost is that changes need a manual reload.
 *Revisit when:* it becomes annoying enough. A development-only relaxation is
 possible and must never reach a build.
 
+### 🟡 R-19 — CI actions are pinned to v4, one major behind
+**From:** M3 · **Due:** —
+
+`actions/checkout@v7` and `actions/cache@v6` repeatedly failed to resolve at
+"Set up job" with an internal error on GitHub's side, on a different runner each
+time. They are pinned back to v4, which is cached everywhere and works, at the
+cost of a Node 20 deprecation warning on every job.
+
+*Revisit when:* the warning becomes an error, or the newer majors have been out
+long enough to resolve reliably. Not before — a pipeline that fails at random is
+worse than a warning, because it teaches you to ignore a red run.
+
 ---
 
 ## Resolved
