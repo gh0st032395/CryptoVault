@@ -39,6 +39,9 @@ pub const FILE_KEY_LEN: u32 = 32;
 /// Length of the vault master seed in bytes (256 bits).
 pub const MASTER_SEED_LEN: u32 = 32;
 
+/// Length of a directory identifier, in bytes.
+pub const DIR_ID_LEN: u32 = 16;
+
 /// Bytes of the authenticated header prefix **excluding the nonce**: magic,
 /// version, algorithm, mode, reserved, file id and metadata length.
 ///

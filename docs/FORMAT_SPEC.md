@@ -355,10 +355,24 @@ platform. The rules are only:
 
 ### 8.3 Long names
 
-If the encoded name exceeds **220 bytes**, the on-disk name becomes
-`base64url(SHA-256(ciphertext))[0..32] ‖ ".cvn"`, and the full encrypted name is
-stored inside that file. Costs one extra read; keeps every path component inside
-the limits of NTFS, APFS, ext4 and every sync client we have tested.
+If the encoded stem exceeds **220 characters** it spills. The stem becomes a
+hash of the ciphertext, and the full encrypted name is written beside the entry
+in a companion file sharing that stem:
+
+```
+stem = base64url_nopad(SHA-256(ciphertext))[0..32]
+
+<stem>.cvf   the entry itself (or <stem>.cvd for a directory)
+<stem>.cvn   the full encrypted name
+```
+
+32 base64url characters carry 192 bits, so an accidental collision between two
+long names is not a scenario worth handling. Reading a spilled entry costs one
+extra file read, and the name is no less encrypted — the companion holds exactly
+the ciphertext that would otherwise have been the filename.
+
+This keeps every path component inside the limits of NTFS, APFS, ext4 and every
+sync client we have tested.
 
 ---
 
@@ -366,8 +380,10 @@ the limits of NTFS, APFS, ext4 and every sync client we have tested.
 
 ### 9.1 Placement
 
-Every directory has a random 16-byte `dir_id`. The vault root's `dir_id` is
-all zeros. A directory's location on disk is:
+Every directory has a random 16-byte `dir_id`. The root is the exception —
+something has to be the starting point — and its `dir_id` is the **vault
+identifier**, so that two different vaults do not place their root at the same
+relative path. A directory's location on disk is:
 
 ```
 h    = HMAC-SHA256(K_mac, dir_id)
@@ -484,9 +500,8 @@ Tracked here until resolved, then moved into the body of the specification.
    decided; currently not done, and disclosed in the threat model.
 2. **Canonical CBOR encoding.** The MAC in §3 requires one, and the exact rules
    need pinning before M1 ships.
-3. **Root `dir_id`.** All zeros is simple, but it makes the root directory's
-   on-disk location identical across every vault. Using `vault_id` instead costs
-   nothing and is probably better; to be decided in M1.
+3. ~~**Root `dir_id`.**~~ Resolved in M1: the root uses `vault_id`, so two
+   vaults do not put their root in the same relative place.
 4. **Archived mode layout** — M6.
 5. **`.ecf` export compatibility** with Cryptera — M8.
 

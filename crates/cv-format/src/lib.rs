@@ -58,8 +58,10 @@
 pub mod chunk;
 pub mod consts;
 pub mod content;
+pub mod dirmap;
 pub mod header;
 pub mod metadata;
+pub mod names;
 
 pub use header::FileHeader;
 pub use metadata::FileMetadata;
@@ -157,6 +159,22 @@ pub enum FormatError {
     /// explicit user action.
     #[error("this file is archived and cannot be written to until it is restored")]
     NotWritable,
+
+    /// A name cannot be stored in, or was not recovered from, a vault.
+    #[error("invalid name: {reason}")]
+    InvalidName {
+        /// Why the name was refused.
+        reason: &'static str,
+    },
+
+    /// A directory identifier was not the required length.
+    #[error("expected a {expected}-byte directory identifier, found {found}")]
+    WrongDirIdLength {
+        /// Required length.
+        expected: usize,
+        /// Length actually supplied.
+        found: usize,
+    },
 
     /// Something went wrong in the cryptographic layer.
     #[error(transparent)]
