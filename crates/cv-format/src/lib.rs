@@ -28,8 +28,12 @@
 //! │ CHUNK 1 : nonce(12) │ ciphertext(≤32 KiB) │ tag(16)            │
 //! │ …                                                               │
 //! └────────────────────────────────────────────────────────────────┘
-//! AAD of every chunk = chunk_index (u64 BE) ‖ file_id
+//! AAD of every chunk = chunk_index (u64 LE) ‖ file_id
 //! ```
+//!
+//! Every integer in the format is little-endian, in headers, in additional
+//! authenticated data and in metadata alike. One convention, so there is no
+//! second one to get wrong.
 //!
 //! Three details in that diagram are load-bearing:
 //!
