@@ -59,6 +59,19 @@ that is where regressions come from.
 If the change is visible to a user, add a line to `CHANGELOG.md` under
 *Unreleased*.
 
+### And: anything you would not defend as final goes in the register
+
+If you write something that is right *for now* — a shortcut taken deliberately,
+a limit accepted with a reason, a question parked because answering it was
+premature — add it to [`docs/REVISIT.md`](docs/REVISIT.md) in the same commit.
+
+Every one of those is obvious to you today and to nobody in four months.
+Unwritten, they become the worst kind of technical debt: the sort nobody
+remembers taking on, discovered when it breaks.
+
+**Re-read the whole register at the end of every milestone.** That is when the
+entries that have quietly become urgent make themselves known.
+
 ---
 
 ## The verification command
