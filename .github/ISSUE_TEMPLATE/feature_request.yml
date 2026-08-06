@@ -1,0 +1,48 @@
+name: 💡 Feature request
+description: Suggest something CryptoVault should do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [`PLAN.md`](https://github.com/gh0st032395/CryptoVault/blob/main/PLAN.md)
+        first — most of the application is not built yet, and what you want may
+        already be a milestone.
+
+        If your idea contradicts a decision in [`docs/ADR/`](https://github.com/gh0st032395/CryptoVault/tree/main/docs/ADR),
+        say so and argue the trade-off. Those decisions are not sacred; they are
+        just written down, which makes them easier to argue with.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >-
+        The situation you are in, not the solution you have in mind. A good
+        problem statement often gets solved a better way than the one proposed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+    validations:
+      required: true
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: What it would cost
+      description: >-
+        Optional, and genuinely valuable. Most things worth adding to a vault
+        also weaken something else — metadata privacy, sync behaviour, attack
+        surface, or simply the number of options a new user has to face.
+
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have checked PLAN.md and this is not already a planned milestone
+          required: true

@@ -1,0 +1,19 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/gh0st032395/CryptoVault/security/advisories/new
+    about: >-
+      Anything affecting the confidentiality or integrity of user data goes
+      here, privately — never in a public issue. See SECURITY.md.
+
+  - name: 💬 Ask a question or propose a design change
+    url: https://github.com/gh0st032395/CryptoVault/discussions
+    about: >-
+      Questions, and arguments about whether a design decision went the right
+      way. The ADRs in docs/ADR are a good place to see the reasoning first.
+
+  - name: 📖 Read the plan before reporting missing features
+    url: https://github.com/gh0st032395/CryptoVault/blob/main/PLAN.md
+    about: >-
+      CryptoVault is at milestone M0 and most of it is not built yet. The plan
+      says what is coming and when.

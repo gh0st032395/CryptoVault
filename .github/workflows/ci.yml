@@ -1,0 +1,151 @@
+# Continuous integration.
+#
+# These steps are the same ones `scripts/check.sh` runs locally, split across
+# jobs so they run in parallel. A green run here should mean a green run there,
+# and vice versa — if the two ever diverge, fix them, do not work around it.
+#
+# Only first-party GitHub actions are used. Every third-party action is code
+# running with access to this repository, and for a security project that is a
+# supply-chain dependency worth doing without.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push supersedes the previous run on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Backtraces cost nothing here and save a round trip when a test fails.
+  RUST_BACKTRACE: 1
+  # Deliberately no global `RUSTFLAGS: -D warnings`: it would apply to
+  # dependencies too, so an upstream crate emitting a harmless warning would
+  # break our build. Warnings in our own code are denied by the workspace lint
+  # table and by the clippy step below.
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The toolchain version comes from rust-toolchain.toml; rustup installs it
+      # on first use. Printing it makes the log say which one actually ran.
+      - name: Show toolchain
+        run: |
+          rustc --version
+          cargo --version
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build
+        run: cargo build --workspace --all-targets --all-features
+
+      - name: Test
+        run: cargo test --workspace --all-features
+
+  lint:
+    name: Format, lints and documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: lint-cargo-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: lint-cargo-
+
+      - name: Formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Documentation builds without warnings
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --no-deps --all-features
+
+  supply-chain:
+    name: Licences, advisories and dependency sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo tools
+        id: cache-tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: cargo-tools-deny-audit-v1
+
+      - name: Install cargo-deny and cargo-audit
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: cargo install --locked cargo-deny cargo-audit
+
+      # Licences, banned crates, and the requirement that every dependency comes
+      # from crates.io and nowhere else.
+      - name: cargo-deny
+        run: cargo deny check
+
+      # Known vulnerabilities in the dependency tree. Kept separate from
+      # cargo-deny so the log says plainly which of the two failed.
+      - name: cargo-audit
+        run: cargo audit --deny warnings
+
+  # Cheap structural checks that catch the mistakes reviewers keep missing.
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No test vaults or key material committed
+        run: |
+          # A committed vault is a committed secret, even when it is "just a
+          # test". .gitignore blocks the obvious cases; this catches a forced add.
+          if git ls-files | grep -E '\.(cvf|cvd|cvn|cvarchive|key|pem|p12|pfx)$|(^|/)vault\.cvconf$'; then
+            echo "::error::Encrypted vault files or key material are committed to the repository"
+            exit 1
+          fi
+
+      - name: Both manual languages have the same chapters
+        run: |
+          # The two translations are meant to stay in step; drifting apart is
+          # how one of them quietly rots.
+          it=$(find docs/manual/it -name '*.md' -exec basename {} \; | sed 's/^[0-9]*-//' | sort | wc -l)
+          en=$(find docs/manual/en -name '*.md' -exec basename {} \; | sed 's/^[0-9]*-//' | sort | wc -l)
+          if [ "$it" -ne "$en" ]; then
+            echo "::error::The Italian manual has $it files and the English one $en; they must stay in step"
+            exit 1
+          fi

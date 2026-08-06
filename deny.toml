@@ -33,6 +33,9 @@ allow = [
     "CC0-1.0",
 ]
 confidence-threshold = 0.93
+# The allow list is written for the dependency tree we expect, not only the one
+# we have today. Listing a licence we have not encountered yet is intentional.
+unused-allowed-license = "allow"
 
 [bans]
 multiple-versions = "warn"

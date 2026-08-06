@@ -42,6 +42,9 @@ thiserror = "2.0"
 # not suggestions; CI runs with warnings denied.
 [workspace.lints.rust]
 missing_docs = "deny"
+# Unused code is either a leftover or a mistake, and in a crate that handles key
+# material an unused variable is often a value someone meant to wipe.
+unused = { level = "deny", priority = -1 }
 missing_debug_implementations = "warn"
 rust_2018_idioms = { level = "warn", priority = -1 }
 unreachable_pub = "warn"
