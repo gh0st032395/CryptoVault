@@ -1,0 +1,55 @@
+# Scheduled fuzzing.
+#
+# Kept out of the main CI workflow for two reasons: it needs a nightly
+# toolchain, and a short run on every push finds nothing that the last short run
+# did not. Fuzzing pays off over hours, not seconds.
+#
+# So it runs weekly, and on demand when a parser has been touched. A failure
+# here is a real finding: see fuzz/README.md for what to do with it.
+
+name: Fuzz
+
+on:
+  schedule:
+    # Sunday, 03:00 UTC.
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds to run each target
+        required: false
+        default: "300"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [header, chunk, config, name]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install nightly and cargo-fuzz
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo install --locked cargo-fuzz
+
+      - name: Fuzz
+        run: |
+          cargo +nightly fuzz run ${{ matrix.target }} -- \
+            -max_total_time=${{ inputs.seconds || 300 }}
+
+      # A crashing input is the whole point of the run, and it is untriaged
+      # data, so it is uploaded for inspection rather than committed anywhere.
+      - name: Upload any crashing input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts/
+          if-no-files-found: ignore

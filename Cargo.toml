@@ -9,6 +9,9 @@ members = [
     "crates/cv-render",
     "crates/cv-cli",
 ]
+# Fuzzing needs nightly; `fuzz/` is its own workspace so the pinned stable
+# toolchain here never has to know about it.
+exclude = ["fuzz"]
 
 # Metadata shared by every crate, so version and licence never drift apart.
 [workspace.package]

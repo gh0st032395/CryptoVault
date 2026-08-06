@@ -134,7 +134,12 @@ jobs:
         run: |
           # A committed vault is a committed secret, even when it is "just a
           # test". .gitignore blocks the obvious cases; this catches a forced add.
-          if git ls-files | grep -E '\.(cvf|cvd|cvn|cvarchive|key|pem|p12|pfx)$|(^|/)vault\.cvconf$'; then
+          # The frozen format vectors are the one deliberate exception: test
+          # data under keys published in the test source, committed so that a
+          # format change cannot happen quietly.
+          if git ls-files \
+            | grep -v '^crates/cv-format/tests/vectors/' \
+            | grep -E '\.(cvf|cvd|cvn|cvarchive|key|pem|p12|pfx)$|(^|/)vault\.cvconf$'; then
             echo "::error::Encrypted vault files or key material are committed to the repository"
             exit 1
           fi
