@@ -39,10 +39,16 @@ pub const FILE_KEY_LEN: u32 = 32;
 /// Length of the vault master seed in bytes (256 bits).
 pub const MASTER_SEED_LEN: u32 = 32;
 
-/// Bytes of the header that precede the sealed payload and are authenticated as
-/// associated data: magic, version, algorithm, mode, reserved, file id, nonce
-/// and metadata length.
-pub const HEADER_PREFIX_LEN: u32 = 4 + 1 + 1 + 1 + 1 + FILE_ID_LEN + NONCE_LEN + 4;
+/// Length of a directory identifier, in bytes.
+pub const DIR_ID_LEN: u32 = 16;
+
+/// Bytes of the authenticated header prefix **excluding the nonce**: magic,
+/// version, algorithm, mode, reserved, file id and metadata length.
+///
+/// The nonce is not counted here because its length depends on the algorithm —
+/// 12 bytes for AES-GCM, 24 for XChaCha20-Poly1305. Use
+/// [`crate::chunk::header_prefix_len`] for the total.
+pub const HEADER_FIXED_PREFIX_LEN: u32 = 4 + 1 + 1 + 1 + 1 + FILE_ID_LEN + 4;
 
 /// Fixed part of the sealed header payload: the file key and the plaintext size.
 /// Variable-length metadata follows it inside the same sealed block.
@@ -108,9 +114,9 @@ const _: () = assert!(
 
 const _: () = assert!(
     // magic 4 + version 1 + alg_id 1 + mode 1 + reserved 1 + file_id 16
-    // + nonce 12 + meta_len 4 = 40
-    HEADER_PREFIX_LEN == 40,
-    "the authenticated header prefix is 40 bytes; update FORMAT_SPEC.md before changing it"
+    // + meta_len 4 = 28, with the algorithm's nonce added on top
+    HEADER_FIXED_PREFIX_LEN == 28,
+    "the fixed header prefix is 28 bytes; update FORMAT_SPEC.md before changing it"
 );
 
 const _: () = assert!(

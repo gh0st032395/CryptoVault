@@ -54,6 +54,12 @@ vault.cvconf
 .env.*
 !.env.example
 
+# …except the frozen format vectors, which are committed on purpose: they are
+# the mechanism that stops the on-disk format changing by accident. They contain
+# nothing but test data encrypted under keys published in the test source.
+!crates/cv-format/tests/vectors/
+!crates/cv-format/tests/vectors/**
+
 # Build/CI local artifacts
 /coverage/
 /fuzz/artifacts/

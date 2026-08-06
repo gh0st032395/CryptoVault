@@ -9,6 +9,9 @@ members = [
     "crates/cv-render",
     "crates/cv-cli",
 ]
+# Fuzzing needs nightly; `fuzz/` is its own workspace so the pinned stable
+# toolchain here never has to know about it.
+exclude = ["fuzz"]
 
 # Metadata shared by every crate, so version and licence never drift apart.
 [workspace.package]
@@ -37,6 +40,30 @@ cv-ops = { path = "crates/cv-ops", version = "0.1.0" }
 # Third-party. Kept deliberately small: in a security tool every dependency is
 # code you are asking your users to trust.
 thiserror = "2.0"
+
+# Cryptography, all from the RustCrypto project.
+#
+# These versions are chosen as a *coherent generation* — every one of them builds
+# on `aead` 0.5 and `digest` 0.10 — rather than by taking the newest release of
+# each crate individually. Mixing generations would pull two copies of the trait
+# crates into the tree, which means two copies of the code doing the actual
+# cryptography. Newest is not a virtue here; agreeing with each other is.
+aes-gcm = "0.10"              # AES-256-GCM, the default content cipher
+chacha20poly1305 = "0.10"     # XChaCha20-Poly1305, the alternative (alg_id 0x02)
+aes-siv = "0.7"               # Deterministic AEAD for filenames
+argon2 = "0.5"                # Password-based key derivation
+hkdf = "0.12"                 # Sub-key derivation from the master seed
+hmac = "0.12"                 # Config authentication and directory placement
+sha2 = "0.10"
+rand = "0.8"                  # OsRng only; no user-visible randomness is seeded
+subtle = "2.6"                # Constant-time comparison
+zeroize = { version = "1.8", features = ["derive"] }
+
+# Serialisation of the on-disk format.
+ciborium = "0.2"              # CBOR: compact, self-describing, one parser to fuzz
+serde = { version = "1.0", features = ["derive"] }
+serde_bytes = "0.11"          # CBOR byte strings, rather than arrays of integers
+data-encoding = "2.6"         # base64url for names, base32 for directory hashes
 
 # Lints applied to every crate in the workspace. These are conditions of merge,
 # not suggestions; CI runs with warnings denied.

@@ -1,8 +1,8 @@
 # CryptoVault Format Specification
 
 **Format version:** 1
-**Document status:** Draft — milestone M0. Sections marked *(reserved)* are named
-but not yet fully specified.
+**Document status:** Milestone M1 — sections 1 to 6 and 8 to 10 are implemented
+and tested. Sections marked *(reserved)* are named but not yet fully specified.
 **Last updated:** 2026-08-06
 
 ---
@@ -82,27 +82,52 @@ metadata format is already CBOR, and a second serialisation format would mean a
 second parser to fuzz for no real gain. `cryptovault inspect` prints it in
 readable form for disaster recovery.
 
+The file is a two-element array:
+
+```
+cvconf = [ body: bstr, mac: bstr(32) ]
+mac    = HMAC-SHA256(K_mac, body)
+```
+
+`body` is the CBOR encoding of the configuration below, stored as an opaque byte
+string:
+
 ```
 {
   "magic":        "CVCONF1",          text, constant
   "format":       1,                  uint, format version
-  "vault_id":     bytes(16),          random, identifies the vault across devices
+  "vault_id":     bytes(16),          random; identifies the vault, and is the
+                                      root directory's dir_id (§9.1)
   "created":      uint,               Unix seconds, informational
   "alg_id":       1,                  uint, content AEAD selector
-  "policy": {
-    "sealed":     bool,               true = no plaintext may leave the vault (§12)
-  },
-  "slots":        [ KeySlot, ... ],   one per unlock method (§5)
-  "mac":          bytes(32)           HMAC-SHA256 over the canonical encoding of
-                                      every field above, keyed with K_mac
+  "sealed":       bool,               true = no plaintext may leave the vault (§12)
+  "slots":        [ KeySlot, ... ]    one per unlock method (§5)
 }
 ```
 
-The `mac` field is what stops an attacker with disk access from weakening the
-vault: lowering the Argon2id parameters, switching `alg_id`, or clearing
-`policy.sealed` all invalidate it, and the unlock fails rather than proceeding
-with weaker settings. It is verified **after** a slot has been unwrapped, since
-`K_mac` derives from the master seed.
+**Why the MAC covers a byte string rather than a structure.** Authenticating a
+structure requires a canonical encoding, and canonicalisation rules are a
+well-known source of subtle bugs — two encoders disagreeing by one byte produce
+an authentication failure nobody can explain. Wrapping the body as `bstr` means
+the MAC covers exactly the bytes on disk. There is nothing to canonicalise.
+
+The MAC is what stops an attacker with disk access from weakening a vault:
+lowering the Argon2id cost, switching `alg_id`, or clearing `sealed` all
+invalidate it, and the unlock fails rather than proceeding on weaker terms.
+
+### 3.1 The order of operations at unlock
+
+`K_mac` derives from the master seed, and the master seed is wrapped inside this
+very file. So the MAC can only be checked **after** a slot has been opened:
+
+1. Parse `body` without trusting it, to reach the slots.
+2. Unwrap a slot with the credential → master seed.
+3. Derive the sub-keys, including `K_mac`.
+4. **Verify the MAC.** If it fails, refuse.
+
+Step 4 is the one an implementation can silently omit, and omitting it makes the
+whole MAC decorative. Implementations must not expose a path that returns usable
+keys without it.
 
 ---
 
@@ -154,9 +179,25 @@ KeySlot {
   "p":           uint,        Argon2id parallelism
   "alg_id":      uint,        AEAD used for the wrap
   "nonce":       bytes(12),
-  "wrapped":     bytes(48)    AEAD(KEK, nonce, MasterSeed) ‖ tag
+  "wrapped":     bytes(48)    AEAD(KEK, nonce, aad = binding, MasterSeed) ‖ tag
 }
 ```
+
+The wrap's associated data ties it to its own slot:
+
+```
+binding = kind(1) ‖ alg_id(1) ‖ salt(16) ‖ m_kib(u32) ‖ t(u32) ‖ p(u32)
+```
+
+Strictly this is belt and braces — altering a cost parameter already changes the
+derived key, so a tampered slot would fail to unwrap regardless. It is specified
+so that a wrap cannot be lifted out of one slot and pasted into another with
+different settings, and so that such an attempt fails as an authentication
+failure rather than as a puzzling wrong password.
+
+`label` is deliberately **excluded** from the binding: renaming a slot must not
+require the password. It is covered by the configuration MAC in §3, so it still
+cannot be changed by anyone without the vault key.
 
 Consequences worth stating plainly, because this is the single design decision
 that most affects what the project can do later:
@@ -181,7 +222,7 @@ attacker's either.
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│ HEADER PREFIX  (40 bytes, cleartext, authenticated as AAD)│
+│ HEADER PREFIX  (28 + nonce bytes, cleartext, AAD)         │
 ├───────────────────────────────────────────────────────────┤
 │ SEALED HEADER  (40 + meta_len bytes + 16 tag)             │
 ├───────────────────────────────────────────────────────────┤
@@ -189,7 +230,7 @@ attacker's either.
 └───────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 Header prefix — 40 bytes, cleartext
+### 6.2 Header prefix — cleartext
 
 | Offset | Size | Field | Notes |
 |---|---|---|---|
@@ -199,11 +240,23 @@ attacker's either.
 | 6 | 1 | `mode` | `0x01` live, `0x02` archived (§7) |
 | 7 | 1 | `reserved` | Must be `0x00`; readers reject anything else |
 | 8 | 16 | `file_id` | Random, **immutable for the life of the file** |
-| 24 | 12 | `nonce_hdr` | Fresh on every header write |
-| 36 | 4 | `meta_len` | Length of the metadata inside the sealed block, ≤ 64 KiB |
+| 24 | *N* | `nonce_hdr` | *N* = the algorithm's nonce length. Fresh on every header write |
+| 24+*N* | 4 | `meta_len` | Length of the metadata inside the sealed block, ≤ 64 KiB |
 
-The whole 40-byte prefix is the AAD of the sealed header, so none of it can be
-altered without detection.
+**The prefix is not a fixed size**, because the nonce is not: 12 bytes for
+AES-256-GCM, 24 for XChaCha20-Poly1305. Its total length is `28 + N`, so 40
+bytes for the default algorithm and 52 for the alternative.
+
+A reader must therefore take `alg_id` from offset 5 and size the rest of the
+header from it, never assume 12. Assuming would place `meta_len` — and with it
+every chunk offset in the file — twelve bytes off.
+
+`reserved` must be zero. It is how a later version signals a change an earlier
+build must not ignore, so a non-zero value stops the parse rather than being
+skipped over.
+
+The whole prefix is the associated data of the sealed header, so none of it can
+be altered without detection.
 
 ### 6.3 Sealed header
 
@@ -216,7 +269,8 @@ sealed = AEAD_encrypt(
 )
 ```
 
-Total header size = `40 + 32 + 8 + meta_len + 16` = **96 + `meta_len`**.
+Total header size = `(28 + N) + 32 + 8 + meta_len + 16` = **84 + `N` + `meta_len`**,
+which for AES-256-GCM's 12-byte nonce is **96 + `meta_len`**.
 
 `plain_size` lives inside the sealed block because an AEAD tag detects a
 *modified* file but not a *truncated* one. Without it, chopping the last chunk
@@ -286,9 +340,24 @@ Layout to be specified in M6.
 ### 8.1 Algorithm
 
 ```
-ciphertext = AES-SIV(K_names, aad = dir_id, plaintext = name_utf8)
+K_siv      = HKDF-Expand(prk = K_names, info = "cv/names/siv/v1", L = 64)
+ciphertext = AES-256-SIV(K_siv, nonce = 0^16, aad = dir_id, plaintext = name_utf8)
 on_disk    = base64url_nopad(ciphertext) ‖ "." ‖ extension
 ```
+
+The ciphertext is `16 + len(name)` bytes: AES-SIV prepends the synthetic
+initialisation vector, which doubles as the authentication tag.
+
+Two details that look odd and are not:
+
+- **The SIV key is 64 bytes, not 32.** AES-256-SIV runs two keyed constructions
+  and needs double-width key material. Rather than making one branch of the key
+  hierarchy a different width from every other, `K_names` stays 32 bytes like
+  its siblings and is expanded here under its own label.
+- **The nonce is a constant zero.** With SIV the nonce is just one more
+  associated-data input, and the construction is specifically built to remain
+  secure when it repeats. Determinism is the requirement here, not an accident,
+  and SIV is the algorithm chosen because it makes determinism safe.
 
 AES-SIV is **deterministic**, which is required: opening `/Reports/2026.pdf`
 must compute the on-disk name directly, without listing and decrypting the whole
@@ -311,10 +380,24 @@ platform. The rules are only:
 
 ### 8.3 Long names
 
-If the encoded name exceeds **220 bytes**, the on-disk name becomes
-`base64url(SHA-256(ciphertext))[0..32] ‖ ".cvn"`, and the full encrypted name is
-stored inside that file. Costs one extra read; keeps every path component inside
-the limits of NTFS, APFS, ext4 and every sync client we have tested.
+If the encoded stem exceeds **220 characters** it spills. The stem becomes a
+hash of the ciphertext, and the full encrypted name is written beside the entry
+in a companion file sharing that stem:
+
+```
+stem = base64url_nopad(SHA-256(ciphertext))[0..32]
+
+<stem>.cvf   the entry itself (or <stem>.cvd for a directory)
+<stem>.cvn   the full encrypted name
+```
+
+32 base64url characters carry 192 bits, so an accidental collision between two
+long names is not a scenario worth handling. Reading a spilled entry costs one
+extra file read, and the name is no less encrypted — the companion holds exactly
+the ciphertext that would otherwise have been the filename.
+
+This keeps every path component inside the limits of NTFS, APFS, ext4 and every
+sync client we have tested.
 
 ---
 
@@ -322,8 +405,10 @@ the limits of NTFS, APFS, ext4 and every sync client we have tested.
 
 ### 9.1 Placement
 
-Every directory has a random 16-byte `dir_id`. The vault root's `dir_id` is
-all zeros. A directory's location on disk is:
+Every directory has a random 16-byte `dir_id`. The root is the exception —
+something has to be the starting point — and its `dir_id` is the **vault
+identifier**, so that two different vaults do not place their root at the same
+relative path. A directory's location on disk is:
 
 ```
 h    = HMAC-SHA256(K_mac, dir_id)
@@ -438,11 +523,10 @@ Tracked here until resolved, then moved into the body of the specification.
 1. **Size padding.** Padding file sizes to fixed buckets would hide the exact
    size from a cloud provider, at a cost in storage and sync traffic. Not
    decided; currently not done, and disclosed in the threat model.
-2. **Canonical CBOR encoding.** The MAC in §3 requires one, and the exact rules
-   need pinning before M1 ships.
-3. **Root `dir_id`.** All zeros is simple, but it makes the root directory's
-   on-disk location identical across every vault. Using `vault_id` instead costs
-   nothing and is probably better; to be decided in M1.
+2. ~~**Canonical CBOR encoding.**~~ Resolved in M1: the MAC covers the body as
+   an opaque byte string, so no canonical encoding is needed.
+3. ~~**Root `dir_id`.**~~ Resolved in M1: the root uses `vault_id`, so two
+   vaults do not put their root in the same relative place.
 4. **Archived mode layout** — M6.
 5. **`.ecf` export compatibility** with Cryptera — M8.
 

@@ -1,0 +1,13 @@
+# Frozen derivation vectors for the CryptoVault format, version 1.
+# Regenerate only with `cargo run -p cv-format --example generate_vectors`,
+# and only when the format has been changed deliberately.
+
+kek = 6f04e177b5b763580c430c84bed267302e1e3ef8b47761a618e95f449f92dcdb
+subkey.content = f491ceb10fc729e57961a183b9952f676bf7e70c565450f47a586b6b905fc809
+subkey.names = 55c08f5d5b24ab8ae971d3872c2744676ac7f2880671ce9bff8510e4c7844b66
+subkey.mac = 248e3b4cca88622d1115ec109db1abdbc659f39d4e1553c29a3ed6148be0176b
+subkey.audit = f2398e97a04effc42d2a38be47983fe3f054ff379c62f0864e35954c6b443842
+subkey.meta = 8e480692e14338a5a8ae14c391798300b4d05cf695512dcf4b35a7a931288074
+siv.invoice = e023e243181a2cab1aeb2dcf8053fb44774d704d88dfd6f95eff92
+name.invoice = 4CPiQxgaLKsa6y3PgFP7RHdNcE2I39b5Xv-S.cvf
+dirpath = d/R3/Q7PM7ZLKOTNRQZW3N462XELHOVNEXK4OMTFG44NSFPJTJ7QX6A
