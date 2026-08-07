@@ -1,9 +1,10 @@
 # 1. Introduzione
 
-> **CryptoVault non è finito.** Mentre scriviamo non esiste un'applicazione
-> funzionante: il progetto è alla milestone M0, che ha costruito le fondamenta,
-> il modello di minaccia e la specifica del formato. Non mettere ancora in un
-> vault di CryptoVault niente a cui tieni.
+> **CryptoVault non è finito.** Mentre scriviamo il progetto è alla milestone
+> M3: l'applicazione funziona, e crea, apre e sfoglia i vault. Quello che non
+> sa ancora fare è portare dentro i file dal tuo disco e riscriverli fuori, che
+> arriva con M4. Non mettere ancora in un vault di CryptoVault niente a cui
+> tieni.
 
 ## Che cos'è CryptoVault
 

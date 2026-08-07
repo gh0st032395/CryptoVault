@@ -1,9 +1,10 @@
 # 1. Introduction
 
-> **CryptoVault is not finished.** At the time of writing there is no working
-> application: the project is at milestone M0, which built the foundations, the
-> threat model and the format specification. Do not store anything you care
-> about in a CryptoVault vault yet.
+> **CryptoVault is not finished.** At the time of writing the project is at
+> milestone M3: the application runs, and it creates, opens and browses vaults.
+> What it cannot do yet is bring files in from your disk or write them back
+> out, which arrives with M4. Do not store anything you care about in a
+> CryptoVault vault yet.
 
 ## What CryptoVault is
 

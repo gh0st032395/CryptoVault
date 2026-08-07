@@ -88,8 +88,18 @@ after.
 No one runs the application on Linux by hand. The bugs that only appear in
 interactive use will not be found by the test suite.
 
+This got substantially worse in M3, and the entry is kept at 🟠 only because the
+answer has not changed. Until M3 the Linux risk was a library behaving
+differently; now it is a *window*. The interface runs on WebKitGTK rather than
+the WebView2 and WKWebView that were actually looked at, the file dialogue is a
+different implementation, and the tray is the part of the desktop that varies
+most between Linux environments — several have none at all. The code handles
+that (a missing tray is a warning, not a failure) and nobody has ever seen it
+happen.
+
 *Revisit when:* M10. Either Linux ships labelled beta, or there is a public test
-phase before the label comes off.
+phase before the label comes off. Somebody opening the application on GNOME and
+KDE once, by hand, would answer more than the test suite can.
 
 ### 🟡 R-07 — `verify` reads a whole vault serially
 **From:** M2 · **Due:** M6

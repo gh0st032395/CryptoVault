@@ -29,9 +29,9 @@ software that does not exist is worse than no manual.
 |---|---|---|
 | 01 Introduction | — | written |
 | 02 Installation | M10 | pending |
-| 03 Creating your first vault | M3 | pending |
-| 04 Unlocking and locking | M3 | pending |
-| 05 Adding and organising files | M3 | pending |
+| 03 Creating your first vault | M3 | written |
+| 04 Unlocking and locking | M3 | written |
+| 05 Organising your files | M3 | written — adding and extracting files are M4 |
 | 06 Opening files in other applications | M4 | pending |
 | 07 Search and previews | M5 | pending |
 | 08 Trash, versions and integrity | M6 | pending |

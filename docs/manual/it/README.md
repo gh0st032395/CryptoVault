@@ -1,8 +1,10 @@
 # CryptoVault — Manuale utente (italiano)
 
-> **CryptoVault è alla milestone M0 e non funziona ancora.** I capitoli vengono
-> scritti man mano che le funzioni che descrivono vengono costruite, perché un
-> manuale di un software che non esiste è peggio di nessun manuale.
+> **CryptoVault è alla milestone M3.** Un'applicazione funzionante c'è: crea i
+> vault, li apre e li sfoglia. Portare i file dentro e fuori arriva con M4,
+> quindi non è ancora un posto dove tenere qualcosa a cui tieni. I capitoli
+> vengono scritti man mano che le funzioni che descrivono vengono costruite,
+> perché un manuale di un software che non esiste è peggio di nessun manuale.
 
 [English version](../en/README.md)
 
@@ -12,9 +14,9 @@
 |---|---|
 | [1. Introduzione](01-introduzione.md) | — |
 | 2. Installazione | M10 |
-| 3. Creare il primo vault | M3 |
-| 4. Sbloccare e bloccare | M3 |
-| 5. Aggiungere e organizzare i file | M3 |
+| [3. Creare il primo vault](03-primo-vault.md) | M3 |
+| [4. Sbloccare e bloccare](04-sbloccare-e-bloccare.md) | M3 |
+| [5. Organizzare i file](05-organizzare-i-file.md) | M3 |
 | 6. Aprire i file con altre applicazioni | M4 |
 | 7. Ricerca e anteprime | M5 |
 | 8. Cestino, versioni e integrità | M6 |

@@ -623,7 +623,15 @@ Non richiedono discussione, ma vanno messe a verbale:
       *Rimandato a M3:* i job di import/export con progresso e annullamento, e i benchmark
       di scala con soglie in CI — al loro posto ci sono test di scala moderati (500 file in
       una directory, 200 directory sugli shard).
-- [ ] **M3 — Interfaccia desktop**: Tauri + Svelte, browser dei file virtualizzato,
-      multi-vault, auto-lock.
+- [x] **M3 — Interfaccia desktop**: `cv-session` (quali vault esistono, quali sono
+      aperti, ricordati fra un avvio e l'altro) e `cv-desktop`, lo strato Tauri
+      sopra di esso. Creazione con calibrazione di Argon2id, sblocco, gestione
+      multi-vault, browser con albero e lista virtualizzata, ordinamento,
+      ricerca nella cartella, nuova cartella, rinomina, eliminazione, auto-lock
+      con le tre politiche, tray con blocco immediato, temi e i18n IT/EN.
+      356 test.
+      *Rimandato a M4:* import ed export dei file — trascinamento incluso —
+      perché entrambi richiedono avanzamento e annullamento (R-08). I due
+      pulsanti esistono, sono disattivati e dicono perché.
 
 Ogni milestone completata aggiorna questa sezione e il CHANGELOG.
