@@ -12,9 +12,12 @@
   import {
     applyTheme,
     loadLanguage,
+    loadPolicy,
     loadTheme,
     saveLanguage,
+    savePolicy,
     saveTheme,
+    type LockPolicy,
     type ThemeChoice,
   } from './lib/theme';
   import Browser from './lib/screens/Browser.svelte';
@@ -38,6 +41,7 @@
 
   let language = $state<Language>(loadLanguage(detectLanguage()));
   let themeChoice = $state<ThemeChoice>(loadTheme());
+  let policy = $state<LockPolicy>(loadPolicy());
   let open = $state<VaultSummary | null>(null);
   let settingsOpen = $state(false);
 
@@ -63,18 +67,25 @@
   /**
    * Auto-lock.
    *
-   * The default policy from the plan: warn with a countdown, then lock anyway.
-   * Deliberately not "postpone while the vault is busy" — a single forgotten
-   * open file would keep a vault unlocked all night, which is the exact failure
-   * auto-lock exists to prevent.
+   * Three policies, chosen by the user. `warn` is the default from the plan:
+   * a countdown that can be stopped, and a lock if nobody stops it.
+   *
+   * `manual` really does disable the timer. It is a legitimate thing to want
+   * and it is also the exact failure auto-lock exists to prevent, so the
+   * tooltip beside it says that plainly rather than presenting the three
+   * options as interchangeable.
    */
   $effect(() => {
-    if (open === null) return;
+    if (open === null || policy === 'manual') return;
 
     let idleTimer: ReturnType<typeof setTimeout>;
     let tick: ReturnType<typeof setInterval> | undefined;
 
     const startCountdown = () => {
+      if (policy === 'immediate') {
+        void lock();
+        return;
+      }
       countdown = COUNTDOWN_SECONDS;
       tick = setInterval(() => {
         countdown = (countdown ?? 1) - 1;
@@ -120,6 +131,11 @@
     themeChoice = next;
     saveTheme(next);
   }
+
+  function setPolicy(next: LockPolicy) {
+    policy = next;
+    savePolicy(next);
+  }
 </script>
 
 <div class="app">
@@ -159,6 +175,22 @@
                 class="choice"
                 class:on={themeChoice === value}
                 onclick={() => setTheme(value)}
+                type="button">{label}</button
+              >
+            </Tooltip>
+          {/each}
+        </div>
+      </div>
+
+      <div class="group">
+        <span class="group-label">{t.autoLock}</span>
+        <div class="choices">
+          {#each [['warn', t.policyWarn, t.tipPolicyWarn], ['immediate', t.policyImmediate, t.tipPolicyImmediate], ['manual', t.policyManual, t.tipPolicyManual]] as const as [value, label, tip] (value)}
+            <Tooltip text={tip} placement="bottom">
+              <button
+                class="choice"
+                class:on={policy === value}
+                onclick={() => setPolicy(value)}
                 type="button">{label}</button
               >
             </Tooltip>
@@ -274,7 +306,8 @@
 
   .settings {
     display: flex;
-    gap: 26px;
+    flex-wrap: wrap;
+    gap: 16px 26px;
     padding: 12px 14px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);

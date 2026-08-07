@@ -73,6 +73,10 @@ const en = {
 
   // Settings
   settings: 'Settings',
+  autoLock: 'Auto-lock',
+  policyWarn: 'Warn, then lock',
+  policyImmediate: 'Lock at once',
+  policyManual: 'Only when I ask',
   theme: 'Appearance',
   themeLight: 'Light',
   themeDark: 'Dark',
@@ -95,6 +99,12 @@ const en = {
   tipRemove: 'Delete permanently. There is no trash yet.',
   tipSearch: 'Filter by name within this folder.',
   tipTheme: 'Light, dark, or whatever the system is set to.',
+  tipPolicyWarn:
+    'After fifteen idle minutes, a one-minute countdown you can stop. If nobody stops it, the vault locks anyway.',
+  tipPolicyImmediate:
+    'After fifteen idle minutes, lock with no warning. Safest, and it will occasionally interrupt you.',
+  tipPolicyManual:
+    'Never lock on its own. A vault left open stays open — including all night, which is the exact thing auto-lock exists to prevent.',
   tipLanguage: 'Interface language.',
   tipSealed:
     'A sealed vault refuses to let files out in readable form. Note it is a rule this application enforces, not something the cryptography prevents: anyone with the password can still extract the data another way.',
@@ -168,6 +178,10 @@ const it: Dictionary = {
   lockNowShort: 'Blocca',
 
   settings: 'Impostazioni',
+  autoLock: 'Blocco automatico',
+  policyWarn: 'Avvisa, poi blocca',
+  policyImmediate: 'Blocca subito',
+  policyManual: 'Solo quando lo chiedo',
   theme: 'Aspetto',
   themeLight: 'Chiaro',
   themeDark: 'Scuro',
@@ -190,6 +204,12 @@ const it: Dictionary = {
   tipRemove: 'Elimina definitivamente. Il cestino non c’è ancora.',
   tipSearch: 'Filtra per nome dentro questa cartella.',
   tipTheme: 'Chiaro, scuro, o quello che dice il sistema.',
+  tipPolicyWarn:
+    'Dopo quindici minuti di inattività, un conto alla rovescia di un minuto che puoi fermare. Se nessuno lo ferma, il vault si blocca comunque.',
+  tipPolicyImmediate:
+    'Dopo quindici minuti di inattività, blocca senza avvisare. Il più sicuro, e ogni tanto ti interromperà.',
+  tipPolicyManual:
+    'Non si blocca mai da solo. Un vault lasciato aperto resta aperto — anche tutta la notte, che è esattamente ciò da cui il blocco automatico dovrebbe proteggere.',
   tipLanguage: 'Lingua dell’interfaccia.',
   tipSealed:
     'Un vault sigillato non lascia uscire i file in chiaro. Nota che è una regola applicata da questo programma, non qualcosa che la crittografia impedisce: chi ha la password può comunque estrarre i dati in altro modo.',
