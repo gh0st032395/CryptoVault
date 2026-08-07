@@ -97,6 +97,17 @@ function demoTree(): DemoNode {
       'id_ed25519.pub': file(98, 1_760_000_000),
     }),
     'archivio.tar.zst': file(52_428_800, 1_766_000_000),
+    // A directory large enough that rendering every row would be visible as
+    // sluggishness. It is here so the windowing is exercised by simply opening
+    // the demonstration vault, rather than only by a test nobody runs.
+    'molti file': folder(
+      Object.fromEntries(
+        Array.from({ length: 5000 }, (_, i) => [
+          `documento ${String(i).padStart(4, '0')}.txt`,
+          file(1024 + i * 7, 1_760_000_000 + i * 3600),
+        ]),
+      ),
+    ),
     'password del wifi.txt': file(37, 1_772_100_000),
   });
 }

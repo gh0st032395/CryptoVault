@@ -160,16 +160,6 @@ real errors, and real directories.
 one interface, so the swap is contained — but "it worked against the mock" is
 not evidence of anything.
 
-### 🟠 R-14 — The file list is not virtualised
-**From:** M3 · **Due:** M3
-
-Every row is rendered. The plan calls for virtualisation from the start
-precisely so it does not have to be retrofitted, and a directory of 10 000
-entries will make the current list unusable.
-
-*Revisit when:* before M3 closes, and certainly before anyone points the
-interface at a large vault.
-
 ### 🟡 R-15 — Auto-lock has one policy, not three
 **From:** M3 · **Due:** M3
 
@@ -237,6 +227,17 @@ expensive than it is now. Also worth reconsidering the moment the project has a
 second contributor, since the assumption that main gets fixed immediately is
 really an assumption about one person being available.
 
+### 🟡 R-21 — A row bleeds past the sticky column header when scrolled
+**From:** M3 · **Due:** M3
+
+Scrolled deep into a long list, a sliver of a row is visible above the sticky
+`NAME / SIZE / MODIFIED` header. Purely cosmetic, and not diagnosed: the header
+has an opaque background and sits at `top: 0` of the scroll container, so the
+obvious explanation is not the right one.
+
+*Revisit when:* the next pass over the browser screen. Worth ten minutes with
+devtools rather than a guessed fix.
+
 ---
 
 ## Resolved
@@ -246,4 +247,5 @@ entry that was forgotten.
 
 | | Entry | Resolved in |
 |---|---|---|
-| — | *(nothing yet)* | |
+| 🟠 | **R-14** — the file list is not virtualised | M3 · only the visible rows exist in the DOM; 5000 entries render 33 |
+
