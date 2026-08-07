@@ -24,6 +24,7 @@ export type LockPolicy = 'warn' | 'immediate' | 'manual';
 const THEME_KEY = 'cryptovault.theme';
 const LANGUAGE_KEY = 'cryptovault.language';
 const POLICY_KEY = 'cryptovault.lockPolicy';
+const TREE_KEY = 'cryptovault.showTree';
 
 /** Applies a choice to the document, resolving `system` against the OS. */
 export function applyTheme(choice: ThemeChoice): void {
@@ -50,6 +51,21 @@ export function loadPolicy(): LockPolicy {
 
 export function savePolicy(policy: LockPolicy): void {
   localStorage.setItem(POLICY_KEY, policy);
+}
+
+/**
+ * Whether the folder tree is beside the file list.
+ *
+ * On by default: it is how people expect a file browser to look, and somebody
+ * on a narrow window can turn it off, which is the direction that needs the
+ * deliberate act.
+ */
+export function loadShowTree(): boolean {
+  return localStorage.getItem(TREE_KEY) !== 'false';
+}
+
+export function saveShowTree(shown: boolean): void {
+  localStorage.setItem(TREE_KEY, String(shown));
 }
 
 export function loadLanguage(fallback: Language): Language {
