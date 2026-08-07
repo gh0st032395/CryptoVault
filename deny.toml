@@ -17,7 +17,50 @@ all-features = true
 version = 2
 # No blanket ignores. An advisory that genuinely does not apply gets its ID
 # listed here together with a comment saying why, and gets revisited.
-ignore = []
+#
+# Everything below is an **unmaintained** notice rather than a vulnerability:
+# no advisory here describes a way to attack CryptoVault. They arrived with the
+# desktop application in M3, and every one of them is somebody else's crate
+# reached through Tauri, with no version of Tauri that avoids it.
+#
+# The distinction matters and is the reason these are ignored rather than fixed:
+# "unmaintained" says nobody is watching for future bugs, which is a real risk
+# and a slow one. It is answered by Tauri moving on, and by this list being
+# short enough that a *vulnerability* appearing among them is impossible to
+# miss. Re-read at M10, when a release makes the answer "we ship it" instead of
+# "we build it".
+ignore = [
+    # gtk-rs GTK3 bindings — the whole family (gtk, gtk-sys, gdk, gdkx11, atk,
+    # pango, glib and friends). Linux only: Windows and macOS use their own
+    # webview and never build these. Tauri v2 is on GTK3 and the migration to
+    # GTK4 is upstream's, not ours. Linux is already declared beta (R-05).
+    "RUSTSEC-2024-0411",
+    "RUSTSEC-2024-0412",
+    "RUSTSEC-2024-0413",
+    "RUSTSEC-2024-0414",
+    "RUSTSEC-2024-0415",
+    "RUSTSEC-2024-0416",
+    "RUSTSEC-2024-0417",
+    "RUSTSEC-2024-0418",
+    "RUSTSEC-2024-0419",
+    "RUSTSEC-2024-0420",
+
+    # proc-macro-error: a build-time dependency of a macro crate. It runs on the
+    # machine doing the compiling and no part of it reaches the binary a user
+    # runs, let alone a vault.
+    "RUSTSEC-2024-0370",
+
+    # The unic-* Unicode tables, pulled in through Tauri's identifier
+    # validation. Data crates: they hold Unicode character properties and
+    # contain almost no logic to go wrong. Unmaintained matters least here,
+    # because the thing they encode is a published standard that moves once a
+    # year.
+    "RUSTSEC-2025-0075",
+    "RUSTSEC-2025-0080",
+    "RUSTSEC-2025-0081",
+    "RUSTSEC-2025-0098",
+    "RUSTSEC-2025-0100",
+]
 
 [licenses]
 version = 2
@@ -31,6 +74,19 @@ allow = [
     "Unicode-3.0",
     "Zlib",
     "CC0-1.0",
+    # Weak copyleft, and a deliberate decision rather than an oversight.
+    #
+    # It arrives with the desktop application: `selectors`, `cssparser`,
+    # `cssparser-macros` and `dtoa-short` are Servo's CSS crates, which Tauri
+    # uses to rewrite the interface's HTML at build time, and `option-ext`
+    # comes in under `dirs-sys`. None of them touch a vault or a key.
+    #
+    # MPL-2.0 is per-file: it obliges us to publish our changes *to those
+    # files*, and says nothing about the rest of the program. Since we do not
+    # modify them at all, the obligation is discharged by the licence text
+    # travelling with the binary — which M10 has to do for every dependency
+    # anyway. It is not the GPL, and linking it does not reach CryptoVault.
+    "MPL-2.0",
 ]
 confidence-threshold = 0.93
 # The allow list is written for the dependency tree we expect, not only the one

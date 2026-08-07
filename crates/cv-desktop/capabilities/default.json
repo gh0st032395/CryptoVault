@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the main window is allowed to ask of the system. Everything CryptoVault does to a vault goes through this crate's own commands, which are not plugin calls and are not listed here. What is listed is the one capability the interface borrows from the system: opening a folder picker, so that choosing where a vault lives is a choice made in the operating system's own dialogue rather than typed into a text field. `dialog:allow-open` is granted alone — the save, message and confirmation dialogues are not used and stay unavailable, so a compromised page cannot put a system-looking prompt in front of the user.",
+  "windows": ["main"],
+  "permissions": ["core:default", "dialog:allow-open"]
+}

@@ -7,7 +7,10 @@
   is looking at a folder, a dialogue, or nothing at all.
 -->
 <script lang="ts">
-  import { DemoBackend, IS_DEMO, type Backend, type VaultSummary } from './lib/backend';
+  import type { Backend, VaultSummary } from './lib/backend';
+  import { DemoBackend } from './lib/demo';
+  import { isDesktop } from './lib/platform';
+  import { TauriBackend } from './lib/tauri';
   import { detectLanguage, strings, type Language } from './lib/i18n';
   import {
     applyTheme,
@@ -38,7 +41,15 @@
   const IDLE_LIMIT_MS = 15 * 60 * 1000;
   const COUNTDOWN_SECONDS = 60;
 
-  const backend: Backend = new DemoBackend();
+  /*
+   * Which world this is, decided once.
+   *
+   * In the desktop application every call below reaches a real vault through
+   * `cv-desktop`; in a browser it reaches an invented tree, and the banner says
+   * so. Nothing downstream of this line knows the difference, which is what
+   * makes reviewing the interface in a browser worth doing.
+   */
+  const backend: Backend = isDesktop ? new TauriBackend() : new DemoBackend();
 
   let language = $state<Language>(loadLanguage(detectLanguage()));
   let themeChoice = $state<ThemeChoice>(loadTheme());
@@ -119,9 +130,20 @@
 
   async function lock() {
     if (open === null) return;
-    await backend.lock(open.id);
+    const { id } = open;
+
+    // The screen closes first, and unconditionally. Every way this call can
+    // fail — an identifier that is not registered any more — is a way in which
+    // the vault is already not open, so leaving the browser on screen while
+    // reporting an error would be showing a vault that is not there.
     open = null;
     countdown = null;
+
+    try {
+      await backend.lock(id);
+    } catch {
+      // Nothing to tell the user: they asked for it locked, and it is.
+    }
   }
 
   function setLanguage(next: Language) {
@@ -218,7 +240,7 @@
     </div>
   {/if}
 
-  {#if IS_DEMO}
+  {#if !isDesktop}
     <div class="demo" role="status">
       <Icon name="warning" size={14} />
       {t.demoBanner}

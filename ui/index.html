@@ -4,13 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
-      The interface never talks to anything. `connect-src 'none'` means a
-      compromised page cannot phone home even if something else went wrong, and
-      it is the strongest single line in the whole application.
+      The interface never talks to the network, and this is where that is
+      enforced. A compromised page cannot phone home even if something else went
+      wrong, which is the strongest single line in the whole application.
+
+      `connect-src` names two things and no more. `ipc:` and
+      `http://ipc.localhost` are how the window reaches the Rust half of the
+      desktop application; both are custom protocols intercepted by the webview
+      and answered in the same process, so neither can put a packet on a wire.
+      `'none'` was here until the Rust half existed, and it would now block the
+      application from talking to itself — every scheme that could actually
+      reach a network is still absent, which is the property that mattered.
+
+      The desktop build sets an equivalent policy of its own, in
+      `crates/cv-desktop/tauri.conf.json5`; this tag is what protects the same
+      interface when it is opened in a browser.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'"
     />
     <title>CryptoVault</title>
   </head>

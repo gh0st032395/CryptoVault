@@ -30,7 +30,42 @@
   let visible = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
+  let wrap = $state<HTMLElement | null>(null);
+
   const id = `tip-${Math.random().toString(36).slice(2, 9)}`;
+
+  /** How close a tooltip may come to the edge of the window. */
+  const MARGIN = 8;
+
+  /**
+   * Slides the tooltip back inside the window if centring would hang it off.
+   *
+   * A tooltip is centred on what it describes, which is right until the thing
+   * it describes is near an edge — and the controls nearest an edge are the
+   * ones alone at the end of a toolbar or a row, which tend to be the ones
+   * whose explanation matters most.
+   *
+   * This is an action rather than an effect because the measurement has to
+   * happen when the node is in the document and laid out. An effect reading
+   * `offsetWidth` can run a moment too early, get zero, conclude that a
+   * 264-pixel tooltip fits anywhere, and never correct itself.
+   */
+  function keepOnScreen(node: HTMLElement) {
+    const anchor = wrap?.getBoundingClientRect();
+    if (anchor === undefined) return;
+
+    const centre = anchor.left + anchor.width / 2;
+    const half = node.offsetWidth / 2;
+
+    let shift = 0;
+    if (centre - half < MARGIN) {
+      shift = MARGIN - (centre - half);
+    } else if (centre + half > window.innerWidth - MARGIN) {
+      shift = window.innerWidth - MARGIN - (centre + half);
+    }
+
+    node.style.setProperty('--shift', `${shift}px`);
+  }
 
   function show() {
     timer = setTimeout(() => (visible = true), 350);
@@ -51,6 +86,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <span
   class="wrap"
+  bind:this={wrap}
   onmouseenter={show}
   onmouseleave={hide}
   onfocusin={() => (visible = true)}
@@ -61,7 +97,7 @@
   </span>
 
   {#if visible}
-    <span class="tip {placement}" role="tooltip" {id}>{text}</span>
+    <span class="tip {placement}" use:keepOnScreen role="tooltip" {id}>{text}</span>
   {/if}
 </span>
 
@@ -79,7 +115,7 @@
     position: absolute;
     z-index: 40;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(calc(-50% + var(--shift, 0px)));
     width: max-content;
     max-width: 264px;
     padding: 7px 10px;
@@ -105,7 +141,7 @@
   @keyframes appear {
     from {
       opacity: 0;
-      transform: translateX(-50%) translateY(2px);
+      transform: translateX(calc(-50% + var(--shift, 0px))) translateY(2px);
     }
   }
 </style>

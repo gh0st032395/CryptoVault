@@ -21,6 +21,8 @@ const en = {
   addExisting: 'Add an existing vault',
   locked: 'Locked',
   unlocked: 'Unlocked',
+  forget: 'Remove from the list',
+  forgetConfirm: 'Remove this vault from the list? The folder and everything in it stay where they are.',
 
   // Unlock
   unlock: 'Unlock',
@@ -33,6 +35,7 @@ const en = {
   newVault: 'New vault',
   vaultName: 'Name',
   vaultLocation: 'Location',
+  locationPlaceholder: 'Choose a folder to put it in',
   choose: 'Choose…',
   confirmPassword: 'Repeat the password',
   passwordsDiffer: 'The two passwords are not the same.',
@@ -111,11 +114,14 @@ const en = {
   tipStrength:
     'An estimate from length and variety. It cannot judge whether your password is guessable — “Password123!” scores well and is not.',
   tipVaultPath: 'Where the encrypted folder lives on your disk.',
+  tipForget:
+    'Take this vault out of the list. Nothing is deleted — the folder stays exactly where it is, and you can add it again at any time.',
 
   // Statuses and warnings
   notEncryptedWarning: 'The extracted copy is not encrypted.',
   demoBanner:
-    'Demonstration data. The interface is not connected to a real vault yet.',
+    'Demonstration data, running in a browser. Nothing here is a real vault; the password is',
+  couldNotRead: 'This folder could not be read.',
 } as const;
 
 /** Every string the interface can show. Derived from English, so nothing drifts. */
@@ -132,6 +138,9 @@ const it: Dictionary = {
   addExisting: 'Aggiungi un vault esistente',
   locked: 'Bloccato',
   unlocked: 'Sbloccato',
+  forget: 'Togli dall’elenco',
+  forgetConfirm:
+    'Vuoi togliere questo vault dall’elenco? La cartella e tutto quello che contiene restano dove sono.',
 
   unlock: 'Sblocca',
   unlocking: 'Sblocco in corso…',
@@ -142,6 +151,7 @@ const it: Dictionary = {
   newVault: 'Nuovo vault',
   vaultName: 'Nome',
   vaultLocation: 'Posizione',
+  locationPlaceholder: 'Scegli la cartella in cui metterlo',
   choose: 'Scegli…',
   confirmPassword: 'Ripeti la password',
   passwordsDiffer: 'Le due password non coincidono.',
@@ -216,10 +226,13 @@ const it: Dictionary = {
   tipStrength:
     'Una stima basata su lunghezza e varietà. Non può giudicare se la password è indovinabile: «Password123!» prende un buon punteggio e non lo è.',
   tipVaultPath: 'Dove si trova la cartella cifrata sul tuo disco.',
+  tipForget:
+    'Toglie questo vault dall’elenco. Non cancella nulla: la cartella resta esattamente dov’è, e puoi riaggiungerla quando vuoi.',
 
   notEncryptedWarning: 'La copia estratta non è cifrata.',
   demoBanner:
-    'Dati dimostrativi. L’interfaccia non è ancora collegata a un vault reale.',
+    'Dati dimostrativi, in un browser. Niente di quello che vedi è un vault reale; la password è',
+  couldNotRead: 'Non è stato possibile leggere questa cartella.',
 };
 
 const dictionaries: Record<Language, Dictionary> = { en, it };

@@ -54,6 +54,19 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      # Windows and macOS ship their own webview, so there is nothing to
+      # install — but `cv-desktop` still embeds `ui/dist` at compile time, and
+      # without it the build below fails on a clean checkout.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Interface
+        working-directory: ui
+        run: npm ci && npm run build
+
       - name: Build
         run: cargo build --workspace --all-targets --all-features
 
@@ -86,5 +99,12 @@ jobs:
 
       # Known vulnerabilities. Separate from cargo-deny so the log says plainly
       # which of the two failed.
+      #
+      # `--deny warnings` would also fail on "unmaintained", which since M3 is
+      # sixteen crates reached through Tauri. Those are ignored *by name and
+      # with a reason* in `deny.toml`, and duplicating the list here would give
+      # us two lists to keep in step. So cargo-deny owns unmaintained, and this
+      # step keeps the two failures that are never acceptable: a dependency that
+      # is unsound, and one that has been yanked.
       - name: cargo-audit
-        run: cargo audit --deny warnings
+        run: cargo audit --deny unsound --deny yanked

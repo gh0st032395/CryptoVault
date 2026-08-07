@@ -1,0 +1,31 @@
+[package]
+name = "cv-desktop"
+description = "The CryptoVault desktop application: a window, and the session layer behind it"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[[bin]]
+name = "cryptovault-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+cv-session.workspace = true
+dirs.workspace = true
+serde.workspace = true
+tauri.workspace = true
+tauri-plugin-dialog.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

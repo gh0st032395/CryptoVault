@@ -7,7 +7,8 @@
 -->
 <script lang="ts">
   import type { Backend, VaultSummary } from '../backend';
-  import { WrongPassword } from '../backend';
+  import { basename, WrongPassword } from '../backend';
+  import { chooseFolder, isDesktop } from '../platform';
   import type { Dictionary } from '../i18n';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
@@ -27,16 +28,33 @@
   let password = $state('');
   let busy = $state(false);
   let failed = $state(false);
+  /** Anything that went wrong that is not a wrong password. */
+  let problem = $state<string | null>(null);
+  let confirming = $state<string | null>(null);
   let passwordField = $state<HTMLInputElement | null>(null);
 
   $effect(() => {
-    void backend.listVaults().then((list) => (vaults = list));
+    void refresh();
   });
+
+  async function refresh() {
+    try {
+      vaults = await backend.listVaults();
+    } catch (error) {
+      problem = message(error);
+    }
+  }
+
+  /** What to put on screen for a failure that has no handling of its own. */
+  function message(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
 
   function select(vault: VaultSummary) {
     selected = vault;
     password = '';
     failed = false;
+    problem = null;
     // The password field is the only thing to do on this screen once a vault is
     // chosen, so it takes focus rather than waiting to be clicked.
     queueMicrotask(() => passwordField?.focus());
@@ -48,18 +66,58 @@
 
     busy = true;
     failed = false;
+    problem = null;
     try {
       await backend.unlock(selected.id, password);
       const opened = selected;
       password = '';
       onopened(opened);
     } catch (error) {
+      // A wrong password is the expected failure and gets its own handling: a
+      // message beside the field and the cursor put back. Everything else is a
+      // real problem — a folder that has been moved or a disk that is not
+      // there — and has to be readable rather than thrown into the console.
       failed = error instanceof WrongPassword;
-      if (!failed) throw error;
-      passwordField?.focus();
-      passwordField?.select();
+      if (failed) {
+        passwordField?.focus();
+        passwordField?.select();
+      } else {
+        problem = message(error);
+      }
     } finally {
       busy = false;
+    }
+  }
+
+  /**
+   * Adds a vault that already exists.
+   *
+   * The folder's own name becomes the vault's name. It is what the user called
+   * the folder, so it is already the name they recognise it by, and asking them
+   * to type it again would be asking a question with an obvious answer.
+   */
+  async function addExisting() {
+    const path = await chooseFolder(t.addExisting);
+    if (path === null) return;
+
+    problem = null;
+    try {
+      await backend.registerVault(basename(path), path);
+      await refresh();
+    } catch (error) {
+      problem = message(error);
+    }
+  }
+
+  async function forget(id: string) {
+    confirming = null;
+    problem = null;
+    try {
+      await backend.forgetVault(id);
+      if (selected?.id === id) selected = null;
+      await refresh();
+    } catch (error) {
+      problem = message(error);
     }
   }
 </script>
@@ -68,12 +126,26 @@
   <header>
     <h1>{t.yourVaults}</h1>
     <div class="actions">
-      <Button tip={t.tipAddExisting} icon="folder">{t.addExisting}</Button>
+      <!--
+        In a browser there is no folder to point at, so the button says what it
+        would do and cannot do it. Hiding it would be tidier and would also hide
+        the fact that the demonstration is a demonstration.
+      -->
+      <Button tip={t.tipAddExisting} icon="folder" disabled={!isDesktop} onclick={addExisting}>
+        {t.addExisting}
+      </Button>
       <Button tip={t.tipCreateVault} variant="primary" icon="plus" onclick={oncreate}>
         {t.createVault}
       </Button>
     </div>
   </header>
+
+  {#if problem !== null}
+    <p class="problem" role="alert">
+      <Icon name="warning" size={15} />
+      {problem}
+    </p>
+  {/if}
 
   {#if vaults.length === 0}
     <div class="empty">
@@ -84,33 +156,64 @@
     <ul class="vaults">
       {#each vaults as vault (vault.id)}
         <li>
-          <button
-            class="vault"
-            class:active={selected?.id === vault.id}
-            onclick={() => select(vault)}
-            type="button"
-          >
-            <span class="state" class:open={vault.unlocked}>
-              <Icon name={vault.unlocked ? 'unlock' : 'lock'} size={17} />
-            </span>
+          <div class="entry">
+            <button
+              class="vault"
+              class:active={selected?.id === vault.id}
+              onclick={() => select(vault)}
+              type="button"
+            >
+              <span class="state" class:open={vault.unlocked}>
+                <Icon name={vault.unlocked ? 'unlock' : 'lock'} size={17} />
+              </span>
 
-            <span class="identity">
-              <span class="name">{vault.name}</span>
-              <Tooltip text={t.tipVaultPath} placement="bottom">
-                <span class="path faint">{vault.path}</span>
-              </Tooltip>
-            </span>
+              <span class="identity">
+                <span class="name">{vault.name}</span>
+                <Tooltip text={t.tipVaultPath} placement="bottom">
+                  <span class="path faint">{vault.path}</span>
+                </Tooltip>
+              </span>
 
-            {#if vault.sealed}
-              <Tooltip text={t.tipSealed} placement="bottom">
-                <span class="badge">{t.sealedVault}</span>
-              </Tooltip>
-            {/if}
+              {#if vault.sealed}
+                <Tooltip text={t.tipSealed} placement="bottom">
+                  <span class="badge">{t.sealedVault}</span>
+                </Tooltip>
+              {/if}
 
-            <span class="status" class:open={vault.unlocked}>
-              {vault.unlocked ? t.unlocked : t.locked}
-            </span>
-          </button>
+              <span class="status" class:open={vault.unlocked}>
+                {vault.unlocked ? t.unlocked : t.locked}
+              </span>
+            </button>
+
+            <!--
+              Outside the row's own button rather than inside it: a button
+              within a button is not valid, and more to the point a control that
+              removes something must not be a place the mouse lands on the way
+              to opening it.
+            -->
+            <Tooltip text={t.tipForget} placement="bottom">
+              <button
+                class="forget"
+                onclick={() => (confirming = vault.id)}
+                aria-label={t.forget}
+                type="button"
+              >
+                <Icon name="close" size={15} />
+              </button>
+            </Tooltip>
+          </div>
+
+          {#if confirming === vault.id}
+            <div class="confirm" role="alertdialog" aria-label={t.forget}>
+              <span class="words">{t.forgetConfirm}</span>
+              <Button tip={t.cancel} variant="ghost" onclick={() => (confirming = null)}>
+                {t.cancel}
+              </Button>
+              <Button tip={t.tipForget} variant="danger" onclick={() => forget(vault.id)}>
+                {t.forget}
+              </Button>
+            </div>
+          {/if}
 
           {#if selected?.id === vault.id && !vault.unlocked}
             <form class="unlock" onsubmit={submit}>
@@ -199,17 +302,75 @@
     overflow: hidden;
   }
 
+  .entry {
+    display: flex;
+    align-items: stretch;
+  }
+
   .vault {
     display: flex;
     align-items: center;
     gap: 13px;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     padding: 14px 16px;
     border: 0;
     background: transparent;
     text-align: left;
     cursor: pointer;
     transition: background var(--quick) ease;
+  }
+
+  /* Quiet until the pointer is on the row: removing a vault from the list is
+     not something to advertise, and not something to hide either. */
+  .forget {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    flex: none;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    opacity: 0;
+    cursor: pointer;
+    transition:
+      opacity var(--quick) ease,
+      color var(--quick) ease;
+  }
+
+  .entry:hover .forget,
+  .forget:focus-visible {
+    opacity: 1;
+  }
+
+  .forget:hover {
+    color: var(--danger);
+  }
+
+  .confirm {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-sunken);
+    font-size: 12.5px;
+  }
+
+  .confirm .words {
+    flex: 1;
+  }
+
+  .problem {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 14px;
+    padding: 10px 13px;
+    border-radius: var(--radius-sm);
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 12.5px;
   }
 
   .vault:hover,

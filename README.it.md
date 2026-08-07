@@ -109,14 +109,41 @@ Il piano completo, con il ragionamento dietro ogni decisione, è in
 
 ## Compilare dai sorgenti
 
-Serve la toolchain Rust; la versione esatta è fissata in `rust-toolchain.toml` e
-`rustup` la scarica da sola.
+Servono la toolchain Rust — la versione esatta è fissata in
+`rust-toolchain.toml` e `rustup` la scarica da sola — e Node.js, perché
+l'applicazione desktop porta l'interfaccia dentro il proprio binario. Su Linux
+servono anche i pacchetti di sviluppo di WebKitGTK; Windows e macOS forniscono
+la webview da soli.
+
+L'interfaccia si compila per prima. Non è una preferenza: `cv-desktop` incorpora
+`ui/dist` in fase di compilazione, quindi senza di essa la build Rust fallisce.
 
 ```bash
 git clone https://github.com/gh0st032395/CryptoVault.git
 cd CryptoVault
+npm --prefix ui ci
+npm --prefix ui run build
 cargo build --workspace
 ```
+
+Per usare l'applicazione mentre si lavora all'interfaccia, si avviano
+separatamente il server di sviluppo e l'applicazione:
+
+```bash
+npm --prefix ui run dev
+```
+
+```bash
+cargo run -p cv-desktop
+```
+
+Per compilare l'applicazione vera e propria, con l'interfaccia dentro:
+
+```bash
+npm --prefix ui run build && (cd crates/cv-desktop && tauri build --no-bundle)
+```
+
+Gli installer sono M10, e fino ad allora `--no-bundle` è voluto.
 
 Prima di ogni commit si esegue il comando di verifica, identico a quello della CI:
 

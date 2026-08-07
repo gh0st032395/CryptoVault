@@ -64,6 +64,42 @@ jobs:
       - name: Toolchain
         run: rustc --version && cargo --version
 
+      # Tauri builds against the system webview. On Linux that is WebKitGTK,
+      # which is not on the runner image; on Windows and macOS the webview ships
+      # with the operating system and there is nothing to install.
+      - name: System libraries for the desktop build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      # `ci` rather than `install`: it installs exactly the lockfile and fails if
+      # the two have drifted, which is the point of committing one.
+      - name: Interface — install
+        working-directory: ui
+        run: npm ci
+
+      - name: Interface — types and Svelte checks
+        working-directory: ui
+        run: npm run check
+
+      # Before the cargo steps, because `cv-desktop` embeds `ui/dist` at compile
+      # time: without it, clippy and the tests fail on a clean checkout.
+      - name: Interface — build
+        working-directory: ui
+        run: npm run build
+
       - name: Formatting
         run: cargo fmt --all -- --check
 
@@ -101,22 +137,3 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: ui/package-lock.json
-
-      # `ci` rather than `install`: it installs exactly the lockfile and fails if
-      # the two have drifted, which is the point of committing one.
-      - name: Interface — install
-        working-directory: ui
-        run: npm ci
-
-      - name: Interface — types and Svelte checks
-        working-directory: ui
-        run: npm run check
-
-      - name: Interface — build
-        working-directory: ui
-        run: npx vite build
