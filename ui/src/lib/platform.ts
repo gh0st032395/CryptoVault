@@ -6,7 +6,8 @@
  * happens to return a path.
  */
 
-import { isTauri } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 
 /**
@@ -36,4 +37,35 @@ export async function chooseFolder(title: string): Promise<string | null> {
 
   const chosen = await open({ directory: true, multiple: false, title });
   return typeof chosen === 'string' ? chosen : null;
+}
+
+/**
+ * Tells the tray which language to speak.
+ *
+ * The tray's menu is built in Rust and cannot read the interface's settings, so
+ * the interface says. Sending it rather than letting the tray read the system
+ * locale keeps one answer to the question: change the language in the settings
+ * and the menu bar changes with it.
+ */
+export async function useLanguage(language: string): Promise<void> {
+  if (!isDesktop) return;
+
+  await invoke('set_language', { language });
+}
+
+/**
+ * Runs `handler` when something outside the window locks every vault.
+ *
+ * Today that is the tray's lock button. The window has to hear about it,
+ * because otherwise it carries on showing a file browser for a vault whose keys
+ * are gone — every row in it would fail the moment it was touched, which looks
+ * like a corrupted vault rather than a locked one.
+ *
+ * Returns the function that stops listening.
+ */
+export function onVaultsLocked(handler: () => void): () => void {
+  if (!isDesktop) return () => {};
+
+  const listening = listen('vaults-locked', () => handler());
+  return () => void listening.then((stop) => stop());
 }

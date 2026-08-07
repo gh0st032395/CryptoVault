@@ -76,7 +76,11 @@ data-encoding = "2.6"         # base64url for names, base32 for directory hashes
 # tests. `config-json5` buys the one thing a plain `.json` config cannot have —
 # comments — and the file it applies to contains the content security policy,
 # which is not a line anyone should have to guess the reasoning behind.
-tauri = { version = "2", features = ["config-json5"] }
+#
+# `tray-icon` is the menu-bar lock button, and `image-png` is what lets the
+# tray load its own monochrome glyph rather than reusing the application icon,
+# which macOS would render as a solid black block.
+tauri = { version = "2", features = ["config-json5", "tray-icon", "image-png"] }
 tauri-build = { version = "2", features = ["config-json5"] }
 # The system folder picker. Choosing where a vault lives is the one thing the
 # interface genuinely cannot do for itself: a typed path is a typo away from a

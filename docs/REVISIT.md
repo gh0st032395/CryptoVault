@@ -139,6 +139,27 @@ place; the memory locking is not, so a derived key can be paged to disk.
 *Revisit when:* M10 at the latest. It needs one `unsafe` call per platform and a
 graceful fallback where the operating system refuses.
 
+### 🟡 R-28 — Closing the window quits, so the tray goes with it
+**From:** M3 · **Due:** M9
+
+The tray's lock button is meant to be reachable when the window is not. It is —
+behind other applications, minimised — but not after the window is closed,
+because closing the last window ends the process.
+
+That default is the *safe* one, and deliberately kept: ending the process drops
+the session, which wipes every key, so closing the window locks everything.
+The alternative, hiding to the tray, would leave unlocked vaults in a program
+with no visible window, which is the state auto-lock exists to prevent.
+
+So this is not a bug, it is a trade with a cost: the panic button is absent
+exactly when someone has tidied the window away. Hiding to the tray *and*
+locking on hide would give both, and needs a decision about what "close" should
+mean rather than a patch.
+
+*Revisit when:* M9 builds the rest of the system integration — tray, global
+lock hotkey, context menus — which is where this question belongs and where a
+global hotkey would make the window's presence irrelevant anyway.
+
 ### 🟡 R-23 — The password crosses to Rust as an ordinary string
 **From:** M3 · **Due:** M10
 

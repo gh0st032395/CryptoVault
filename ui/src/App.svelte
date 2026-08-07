@@ -9,7 +9,7 @@
 <script lang="ts">
   import type { Backend, VaultSummary } from './lib/backend';
   import { DemoBackend } from './lib/demo';
-  import { isDesktop } from './lib/platform';
+  import { isDesktop, onVaultsLocked, useLanguage } from './lib/platform';
   import { TauriBackend } from './lib/tauri';
   import { detectLanguage, strings, type Language } from './lib/i18n';
   import {
@@ -65,6 +65,24 @@
 
   $effect(() => {
     applyTheme(themeChoice);
+  });
+
+  // The tray's menu is built in Rust, so it is told rather than asked.
+  $effect(() => {
+    void useLanguage(language);
+  });
+
+  /*
+   * The tray can lock everything without the window being involved, which would
+   * otherwise leave a file browser on screen for a vault that is no longer
+   * open. Going back to the vault list is the honest picture of what just
+   * happened, and it is also what the window's own lock button does.
+   */
+  $effect(() => {
+    return onVaultsLocked(() => {
+      open = null;
+      countdown = null;
+    });
   });
 
   // The interface follows the system while the choice is "system", rather than
