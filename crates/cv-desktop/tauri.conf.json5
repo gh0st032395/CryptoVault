@@ -62,9 +62,23 @@
     // reaches a user.
     active: false,
     targets: "all",
-    // `icons/icon.png` is not optional even with bundling off — it is the
-    // window's own icon, and the build fails without it. The `.icns` and `.ico`
-    // that macOS and Windows installers want are generated from it in M10.
-    icon: ["icons/32x32.png", "icons/128x128.png", "icons/icon.png"],
+    // Neither of these is optional even with bundling off, and they are not
+    // optional for the same reason.
+    //
+    // `icons/icon.png` is the window's own icon. `icons/icon.ico` is what
+    // `tauri-build` compiles into the executable's Windows resource — on that
+    // platform and only there, its absence fails the build outright, which is
+    // exactly how it was found. It holds uncompressed 16, 32, 48 and 64 pixel
+    // images, because the path it takes ends at the Windows resource compiler
+    // and that has never been reliably happy with PNGs inside an `.ico`.
+    //
+    // The full set an installer wants — every size, plus the `.icns` macOS
+    // asks for — is generated in M10.
+    icon: [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.png",
+      "icons/icon.ico",
+    ],
   },
 }

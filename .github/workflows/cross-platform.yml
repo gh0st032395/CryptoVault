@@ -100,11 +100,18 @@ jobs:
       # Known vulnerabilities. Separate from cargo-deny so the log says plainly
       # which of the two failed.
       #
-      # `--deny warnings` would also fail on "unmaintained", which since M3 is
-      # sixteen crates reached through Tauri. Those are ignored *by name and
-      # with a reason* in `deny.toml`, and duplicating the list here would give
-      # us two lists to keep in step. So cargo-deny owns unmaintained, and this
-      # step keeps the two failures that are never acceptable: a dependency that
-      # is unsound, and one that has been yanked.
+      # The two tools are not redundant, which this step exists to prove.
+      #
+      # cargo-deny treats an `unsound` advisory as a warning and passes; this
+      # step escalates it to a failure, and on the first run after M3 it caught
+      # one cargo-deny had let through. `--deny warnings` is still not used,
+      # because that would also fail on "unmaintained" — sixteen crates reached
+      # through Tauri, ignored by name and with a reason in `deny.toml`.
+      #
+      # RUSTSEC-2024-0429 is the exception, and it is spelled out here rather
+      # than hidden in a broader flag: unsoundness in `glib`'s `VariantStrIter`,
+      # Linux only, reachable only through GTK, and fixed in a glib that Tauri
+      # does not use yet. The reasoning is in `deny.toml` beside the others;
+      # what lives here is only the one identifier the flag cannot express.
       - name: cargo-audit
-        run: cargo audit --deny unsound --deny yanked
+        run: cargo audit --deny unsound --deny yanked --ignore RUSTSEC-2024-0429

@@ -245,19 +245,36 @@ also trivially replaceable: deleting it loses the list of vaults, never a vault.
 *Revisit when:* there is anywhere to show a startup failure. A window that opens
 and says what happened, with a button to start a fresh list, is the whole fix.
 
-### 🟡 R-25 — Sixteen unmaintained crates arrived with Tauri
+### 🟠 R-25 — Seventeen advisories arrived with Tauri, and one of them is unsound
 **From:** M3 · **Due:** M10
 
-`deny.toml` ignores sixteen RUSTSEC advisories, listed individually with
-reasons. Every one is *unmaintained* rather than a vulnerability: the gtk-rs
-GTK3 bindings (Linux only, and upstream's migration to GTK4 to make), the
-`unic-*` Unicode tables, and `proc-macro-error`, which runs only at build time.
+`deny.toml` ignores seventeen RUSTSEC advisories, listed individually with
+reasons. Sixteen are *unmaintained* rather than vulnerabilities: the gtk-rs GTK3
+bindings (Linux only, and upstream's migration to GTK4 to make), the `unic-*`
+Unicode tables, and `proc-macro-error`, which runs only at build time.
+Unmaintained is a slow risk — nobody is watching those crates for the next bug —
+and not one this project can fix from here.
 
-Unmaintained is a slow risk rather than an urgent one — nobody is watching those
-crates for the next bug — and it is not one this project can fix from here.
+The seventeenth is different, and this entry was first written claiming it did
+not exist. **RUSTSEC-2024-0429** is unsoundness in `glib`'s `VariantStrIter`:
+undefined behaviour that recent compilers turn into a NULL dereference. It
+affects glib 0.15 to 0.20 and we have 0.18.5, so it applies. It cannot be fixed
+here — glib comes under GTK, GTK under Tauri, and the fix is glib 0.20, which
+Tauri does not use yet.
 
-*Revisit when:* M10. Shipping a binary is when "we depend on something nobody
-maintains" stops being a build-time observation.
+Two things bound it: Linux only, since the other platforms use their own
+webviews and never build glib; and a crash rather than a disclosure. Neither
+makes it nothing, which is why this entry is 🟠 and not 🟡.
+
+It also showed that the two supply-chain tools are not redundant. cargo-deny
+treats `unsound` as a warning and passed it; cargo-audit, told to deny unsound,
+failed on it. Had both been configured the same way, nobody would have known.
+
+*Revisit when:* Tauri moves to glib 0.20 — sooner than M10 if that happens
+first. It belongs on the same ledger as [R-05], which decides whether Linux
+ships labelled beta.
+
+[R-05]: #-r-05--linux-is-built-and-tested-only-by-ci
 
 ### 🟡 R-22 — Creating a vault costs a second of calibration in every test
 **From:** M3 · **Due:** —

@@ -60,6 +60,30 @@ ignore = [
     "RUSTSEC-2025-0081",
     "RUSTSEC-2025-0098",
     "RUSTSEC-2025-0100",
+
+    # The one that is not merely unmaintained, listed last because it is the
+    # one to look at first.
+    #
+    # RUSTSEC-2024-0429 — unsoundness in `glib`'s `VariantStrIter` iterators,
+    # which passed `&p` where a C function wrote through it as an out-argument.
+    # Recent compilers discard those writes, so the iterator dereferences NULL
+    # and crashes. It affects every glib from 0.15 to 0.20 and we have 0.18.5,
+    # so it applies to us: this is not an advisory that misses.
+    #
+    # It is ignored because it cannot be fixed from here. glib arrives under
+    # GTK, GTK arrives under Tauri, and the fix is glib 0.20, which Tauri does
+    # not use yet. Two things bound the damage: it is Linux only — Windows and
+    # macOS use their own webviews and never build glib — and the failure is a
+    # crash rather than anything that discloses or corrupts. We do not call
+    # `VariantStrIter` ourselves; whether GTK does internally is not something
+    # this project can determine.
+    #
+    # cargo-deny does not flag it at all, because it treats `unsound` as a
+    # warning. cargo-audit does, and that is the whole reason both tools run.
+    #
+    # Revisit when Tauri moves to glib 0.20. It also belongs on the ledger that
+    # decides whether Linux ships as beta (R-05).
+    "RUSTSEC-2024-0429",
 ]
 
 [licenses]
