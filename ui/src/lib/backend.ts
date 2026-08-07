@@ -40,6 +40,8 @@ export class WrongPassword extends Error {
 
 export interface Backend {
   listVaults(): Promise<VaultSummary[]>;
+  /** Creates a vault and registers it. It is left locked, deliberately. */
+  createVault(name: string, path: string, password: string, sealed: boolean): Promise<string>;
   /** Rejects with {@link WrongPassword} if the credential is wrong. */
   unlock(id: string, password: string): Promise<void>;
   lock(id: string): Promise<void>;
@@ -146,6 +148,21 @@ export class DemoBackend implements Backend {
       ...vault,
       unlocked: this.#unlocked.has(vault.id),
     }));
+  }
+
+  async createVault(
+    name: string,
+    path: string,
+    _password: string,
+    sealed: boolean,
+  ): Promise<string> {
+    await pause(1100); // calibration plus creation, roughly
+    const id = `created-${this.#vaults.length}`;
+    // Locked, matching `cv-session`: creation is not a back door into an open
+    // vault, and typing the password once more is the cheapest check that it
+    // was typed as intended.
+    this.#vaults = [...this.#vaults, { id, name, path: `${path}/${name}`, unlocked: false, sealed }];
+    return id;
   }
 
   async unlock(id: string, password: string): Promise<void> {

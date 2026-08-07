@@ -21,6 +21,7 @@
     type ThemeChoice,
   } from './lib/theme';
   import Browser from './lib/screens/Browser.svelte';
+  import CreateVault from './lib/screens/CreateVault.svelte';
   import Welcome from './lib/screens/Welcome.svelte';
   import Button from './lib/components/Button.svelte';
   import Icon from './lib/components/Icon.svelte';
@@ -44,6 +45,7 @@
   let policy = $state<LockPolicy>(loadPolicy());
   let open = $state<VaultSummary | null>(null);
   let settingsOpen = $state(false);
+  let creating = $state(false);
 
   /** Seconds left before an idle vault locks itself, or null when not warning. */
   let countdown = $state<number | null>(null);
@@ -225,8 +227,20 @@
   {/if}
 
   <main>
-    {#if open === null}
-      <Welcome {backend} {t} onopened={(vault) => (open = vault)} />
+    {#if creating}
+      <CreateVault
+        {backend}
+        {t}
+        oncreated={() => (creating = false)}
+        oncancel={() => (creating = false)}
+      />
+    {:else if open === null}
+      <Welcome
+        {backend}
+        {t}
+        onopened={(vault) => (open = vault)}
+        oncreate={() => (creating = true)}
+      />
     {:else}
       <Browser {backend} vault={open} {t} {language} onlock={lock} />
     {/if}
