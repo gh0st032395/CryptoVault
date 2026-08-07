@@ -116,6 +116,63 @@ a window — the desktop interface is M3 — but the thing itself works.
   no interactive prompt yet, and the help text says plainly that an environment
   variable is a poor place for a password.
 
+### Milestone M3 — The desktop application
+
+**There is an application now.** It has a window, it makes vaults, it opens
+them, and it browses them. What it cannot do is bring a file in from your disk
+or write one back out — that is M4 — so it is a place to keep folders rather
+than files, and the two buttons for it are visible, disabled, and say why.
+
+#### Added
+
+- **`cv-session`** — which vaults exist, which are open, and every operation an
+  interface needs, as plain serialisable types and errors carrying a stable tag
+  to branch on. It lives below the window on purpose: state inside a
+  user-interface framework can only be exercised by running the framework, and
+  "unlock, browse, lock, unlock again" is where a session bug hides.
+- **The list of vaults survives restarts**, in the platform's configuration
+  folder. It records names, paths and whether a vault is sealed. It never
+  records that a vault was *open*: every start begins with everything shut.
+- **`cv-desktop`** — Tauri v2 over `cv-session`, deliberately thin. Each command
+  takes the lock, calls one method, converts the error; if one ever starts
+  deciding something, the decision belongs a layer down.
+- **Creating a vault**, with a password strength meter that says outright what
+  it cannot judge, an unmissable warning that the password cannot be recovered,
+  and the sealed/normal choice. Argon2id is calibrated against the machine that
+  creates the vault, so the cost matches the hardware rather than a number
+  chosen years ago. It comes back locked: typing the password once more is the
+  cheapest check that it was typed as intended.
+- **Multi-vault management** — add an existing vault by pointing at its folder,
+  and remove one from the list without touching a byte on disk.
+- **A file browser** with a folder tree, a breadcrumb trail, sorting by name,
+  size and date, filtering within a folder, multiple selection, and new folder,
+  rename and delete. The list is **windowed**: only the rows in view exist in
+  the DOM, so a folder of five thousand entries renders thirty-three of them.
+- **Auto-lock** with the three policies, and a **tray** whose lock button shuts
+  every vault at once — reachable when the window is behind something else.
+- **Light, dark and system themes**, and Italian and English throughout,
+  including the tray, which is told the language rather than guessing at it.
+- **A content security policy** that names `ipc:` and `http://ipc.localhost` in
+  `connect-src` and nothing else. Both are custom protocols answered in the same
+  process; no scheme that could reach a network is present.
+
+#### Notes
+
+- Vault *contents* never cross into the window. The interface asks for a
+  directory listing and gets names, sizes and dates; file bytes have no command
+  and no path across, and will not get one before M4 gives them somewhere to go
+  that is not a webview.
+- Passwords do cross, as ordinary strings, and are not wiped on either side.
+  Written down as R-23 rather than left as an implication.
+- A vault is still only openable with its password. The recovery key that the
+  format has had room for since M1 is M11, and until then a forgotten password
+  is a lost vault.
+- The desktop binary embeds the built interface, so `ui/dist` has to exist
+  before the Rust build. `scripts/check.sh` and CI build it first.
+- Sixteen unmaintained advisories and one weak-copyleft licence arrive with
+  Tauri's dependency tree. Every one is listed individually, with a reason, in
+  `deny.toml`.
+
 ---
 
 [Unreleased]: https://github.com/gh0st032395/CryptoVault/commits/main

@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/gh0st032395/CryptoVault/actions/workflows/ci.yml/badge.svg)](https://github.com/gh0st032395/CryptoVault/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#licence)
-[![Status](https://img.shields.io/badge/status-pre--alpha%20(M2)-orange.svg)](#project-status)
+[![Status](https://img.shields.io/badge/status-pre--alpha%20(M3)-orange.svg)](#project-status)
 
 [Italiano](README.it.md) · [Development plan](PLAN.md) · [Threat model](docs/THREAT_MODEL.md) · [Format specification](docs/FORMAT_SPEC.md) · [Known limitations](docs/REVISIT.md)
 
@@ -18,12 +18,13 @@
 
 **CryptoVault does not work yet. Do not put real data anywhere near it.**
 
-Milestone **M2** is done, and a vault now works — from a terminal. You can
-create one, put files in it, read them back, and check its integrity, with 320
-tests behind it. What does not exist yet is the application: no window, no file
-browser, no auto-lock, and no way to open a document in the program you
-normally use. The first build worth using daily arrives at the end of M4; see
-the [roadmap](#roadmap).
+Milestone **M3** is done, and there is an application now: a window, a file
+browser with a folder tree, multi-vault management, auto-lock and a tray, with
+356 tests behind it. What it cannot do is bring a file in from your disk or
+write one back out — the two buttons for it are there, disabled, and say why —
+so it is a place to keep folders rather than files. That, and opening a document
+in the program you normally use, is M4. The first build worth using daily
+arrives at the end of it; see the [roadmap](#roadmap).
 
 This warning gets removed when it stops being true.
 
@@ -91,8 +92,8 @@ Full details in [`docs/FORMAT_SPEC.md`](docs/FORMAT_SPEC.md).
 | ✅ | **M0** Foundations — workspace, CI, threat model, format specification | done |
 | ✅ | **M1** Cryptographic core and format, with frozen test vectors and fuzzing | done |
 | ✅ | **M2** Vault, filesystem abstraction, internal CLI | done |
-| ⬜ | **M3** Desktop interface — browser, multi-vault, auto-lock | next |
-| ⬜ | **M4** Opening files in external applications | ← *first genuinely usable build* |
+| ✅ | **M3** Desktop interface — browser, multi-vault, auto-lock, tray | done |
+| ⬜ | **M4** Opening files in external applications, adding and extracting files | ← *next, and the first genuinely usable build* |
 | ⬜ | **M5** Search, opt-in previews, sandboxed PDF viewer | |
 | ⬜ | **M6** Trash, per-file versioning, integrity check, archived mode | |
 | ⬜ | **M7** Sync hardening — conflict detection, cooperative locking | |

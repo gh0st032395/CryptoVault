@@ -1,8 +1,10 @@
 # CryptoVault — User Manual (English)
 
-> **CryptoVault is at milestone M0 and does not work yet.** Chapters are written
-> as the features they describe are built, because a manual for software that
-> does not exist is worse than no manual.
+> **CryptoVault is at milestone M3.** There is a working application: it makes
+> vaults, opens them and browses them. Getting files in and out of one arrives
+> with M4, so it is not yet somewhere to keep anything you care about. Chapters
+> are written as the features they describe are built, because a manual for
+> software that does not exist is worse than no manual.
 
 [Versione italiana](../it/README.md)
 
@@ -12,9 +14,9 @@
 |---|---|
 | [1. Introduction](01-introduction.md) | — |
 | 2. Installation | M10 |
-| 3. Creating your first vault | M3 |
-| 4. Unlocking and locking | M3 |
-| 5. Adding and organising files | M3 |
+| [3. Creating your first vault](03-first-vault.md) | M3 |
+| [4. Unlocking and locking](04-unlocking-and-locking.md) | M3 |
+| [5. Organising your files](05-organising-files.md) | M3 |
 | 6. Opening files in other applications | M4 |
 | 7. Search and previews | M5 |
 | 8. Trash, versions and integrity | M6 |
