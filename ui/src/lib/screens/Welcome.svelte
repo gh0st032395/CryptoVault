@@ -17,9 +17,10 @@
     backend: Backend;
     t: Dictionary;
     onopened: (vault: VaultSummary) => void;
+    oncreate: () => void;
   }
 
-  const { backend, t, onopened }: Props = $props();
+  const { backend, t, onopened, oncreate }: Props = $props();
 
   let vaults = $state<VaultSummary[]>([]);
   let selected = $state<VaultSummary | null>(null);
@@ -68,7 +69,9 @@
     <h1>{t.yourVaults}</h1>
     <div class="actions">
       <Button tip={t.tipAddExisting} icon="folder">{t.addExisting}</Button>
-      <Button tip={t.tipCreateVault} variant="primary" icon="plus">{t.createVault}</Button>
+      <Button tip={t.tipCreateVault} variant="primary" icon="plus" onclick={oncreate}>
+        {t.createVault}
+      </Button>
     </div>
   </header>
 
