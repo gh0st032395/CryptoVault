@@ -263,6 +263,19 @@ name = "cv-render"
 version = "0.1.0"
 
 [[package]]
+name = "cv-session"
+version = "0.1.0"
+dependencies = [
+ "cv-crypto",
+ "cv-format",
+ "cv-vault",
+ "cv-vfs",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "cv-vault"
 version = "0.1.0"
 dependencies = [

@@ -6,6 +6,7 @@ members = [
     "crates/cv-vault",
     "crates/cv-vfs",
     "crates/cv-ops",
+    "crates/cv-session",
     "crates/cv-render",
     "crates/cv-cli",
 ]
@@ -36,6 +37,7 @@ cv-format = { path = "crates/cv-format", version = "0.1.0" }
 cv-vault = { path = "crates/cv-vault", version = "0.1.0" }
 cv-vfs = { path = "crates/cv-vfs", version = "0.1.0" }
 cv-ops = { path = "crates/cv-ops", version = "0.1.0" }
+cv-session = { path = "crates/cv-session", version = "0.1.0" }
 
 # Third-party. Kept deliberately small: in a security tool every dependency is
 # code you are asking your users to trust.

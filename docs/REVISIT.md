@@ -133,16 +133,31 @@ place; the memory locking is not, so a derived key can be paged to disk.
 *Revisit when:* M10 at the latest. It needs one `unsafe` call per platform and a
 graceful fallback where the operating system refuses.
 
-### 🟠 R-13 — The interface runs on a demonstration backend
+### 🟠 R-13 — The interface still runs on a demonstration backend
 **From:** M3 · **Due:** M3
 
-`ui/src/lib/backend.ts` keeps a tree in memory. Nothing in the interface has
-ever spoken to a real vault, so every screen is unproven against real latency,
-real errors, and real directories.
+`ui/src/lib/backend.ts` keeps a tree in memory. Nothing on screen has ever
+spoken to a real vault, so every screen is unproven against real latency, real
+errors and real directories.
 
-*Revisit when:* the Tauri wiring lands, which is the rest of M3. The boundary is
-one interface, so the swap is contained — but "it worked against the mock" is
-not evidence of anything.
+The Rust half now exists: `cv-session` holds the registry of vaults, which are
+open, and every operation the interface needs, tested against real vaults on
+disk. What is missing is only the Tauri shim — an attribute per method, a
+builder, a window, and a TypeScript client that calls them.
+
+*Revisit when:* that shim lands. It is deliberately thin, and if it ever starts
+making decisions they belong in `cv-session` instead.
+
+### 🟡 R-22 — Creating a vault costs a second of calibration in every test
+**From:** M3 · **Due:** —
+
+`Session::create` calibrates Argon2id, which is right in production and makes
+`cv-session`'s tests take about six seconds because each one makes a vault.
+
+*Revisit when:* it becomes the slowest part of the suite. The fix is a way to
+pass fixed parameters in — but an option that skips calibration is also an
+option a caller can reach for in production, so it needs to be shaped as
+"tests only" rather than "faster".
 
 ### 🟡 R-15 — The third auto-lock policy is a stand-in
 **From:** M3 · **Due:** M4
