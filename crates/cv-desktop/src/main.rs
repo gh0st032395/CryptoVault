@@ -61,6 +61,7 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 mod commands;
+mod tray;
 
 use std::error::Error;
 use std::path::PathBuf;
@@ -111,7 +112,7 @@ fn run() -> Result<(), Box<dyn Error>> {
     let registry = config_directory(&context.config().identifier)?.join(REGISTRY_FILE);
     let session = Session::open(&registry)?;
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState {
             session: Mutex::new(session),
@@ -127,8 +128,19 @@ fn run() -> Result<(), Box<dyn Error>> {
             commands::create_dir,
             commands::remove,
             commands::rename,
+            commands::set_language,
         ])
-        .run(context)?;
+        .build(context)?;
+
+    // Built here rather than in `setup`, for the same reason as the vault list
+    // above. Not fatal, though: a desktop with no system tray is a real thing,
+    // and the window has its own lock button, so the honest answer is to say so
+    // and carry on rather than refuse to start over a menu-bar icon.
+    if let Err(error) = tray::install(app.handle()) {
+        eprintln!("cryptovault: no tray icon ({error}); use the lock button in the window");
+    }
+
+    app.run(|_, _| {});
 
     Ok(())
 }

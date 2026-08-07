@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 
 use cv_session::{Entry, SessionError, VaultSummary};
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::AppState;
 
@@ -171,6 +171,17 @@ pub(crate) fn remove(
     path: String,
 ) -> Result<(), CommandError> {
     with_session(&state, |session| session.remove(&id, &path))
+}
+
+/// Tells the tray which language the interface is speaking.
+///
+/// The one command that is not a vault operation. The tray's menu is built in
+/// Rust and its words have to match the window's, and the window is where the
+/// language is chosen — so it says, rather than the tray guessing from the
+/// system locale and disagreeing the moment somebody changes the setting.
+#[tauri::command]
+pub(crate) fn set_language(app: AppHandle, language: String) {
+    crate::tray::relabel(&app, &language);
 }
 
 /// Moves or renames an entry.
