@@ -40,6 +40,53 @@
   const hasSelection = $derived(selection.size > 0);
   const onlyOneSelected = $derived(selection.size === 1);
 
+  /*
+   * Windowing.
+   *
+   * A vault directory can hold tens of thousands of entries, and rendering a
+   * row for each one makes the browser unusable long before that. Only the
+   * rows in view exist in the DOM; the rest is two spacers holding the
+   * scrollbar at the right length.
+   *
+   * Rows are a fixed height, which is what makes the arithmetic trivial: the
+   * first visible index is the scroll position divided by that height. A
+   * variable height would need measurement, and measurement would need a
+   * layout pass per row — which is the cost we are avoiding.
+   */
+  const ROW_HEIGHT = 37;
+  const OVERSCAN = 8;
+
+  let viewport = $state<HTMLDivElement | null>(null);
+  let scrollTop = $state(0);
+  let viewportHeight = $state(600);
+
+  const firstIndex = $derived(
+    Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN),
+  );
+  const lastIndex = $derived(
+    Math.min(visible.length, Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN),
+  );
+  const window_ = $derived(visible.slice(firstIndex, lastIndex));
+  const padTop = $derived(firstIndex * ROW_HEIGHT);
+  const padBottom = $derived(Math.max(0, (visible.length - lastIndex) * ROW_HEIGHT));
+
+  $effect(() => {
+    if (viewport === null) return;
+    const observer = new ResizeObserver(() => {
+      viewportHeight = viewport?.clientHeight ?? 600;
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  });
+
+  // A new folder starts at the top; keeping the old offset would land the user
+  // in the middle of a list they have not seen.
+  $effect(() => {
+    void path;
+    scrollTop = 0;
+    viewport?.scrollTo({ top: 0 });
+  });
+
   $effect(() => {
     const current = path;
     void backend.readDir(vault.id, current).then((list) => {
@@ -123,7 +170,11 @@
     </div>
   {/if}
 
-  <div class="listing">
+  <div
+    class="listing"
+    bind:this={viewport}
+    onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
+  >
     {#if visible.length === 0}
       <div class="empty">
         <Icon name="folder" size={26} />
@@ -137,8 +188,8 @@
         <span class="right">{t.modifiedColumn}</span>
       </div>
 
-      <ul>
-        {#each visible as entry (entry.name)}
+      <ul style:padding-top="{padTop}px" style:padding-bottom="{padBottom}px">
+        {#each window_ as entry (entry.name)}
           <li>
             <button
               class="row"
@@ -297,8 +348,11 @@
   }
 
   .row {
+    /* Fixed, and matching ROW_HEIGHT above: the windowing arithmetic depends
+       on it, so the two must not drift apart. */
+    height: 37px;
     width: 100%;
-    padding: 8px 10px;
+    padding: 0 10px;
     border: 0;
     border-radius: var(--radius-sm);
     background: transparent;
