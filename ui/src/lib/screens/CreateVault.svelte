@@ -11,6 +11,7 @@
 -->
 <script lang="ts">
   import type { Backend } from '../backend';
+  import { chooseFolder, isDesktop } from '../platform';
   import type { Dictionary } from '../i18n';
   import { passwordStrength } from '../theme';
   import Button from '../components/Button.svelte';
@@ -27,11 +28,13 @@
   const { backend, t, oncreated, oncancel }: Props = $props();
 
   let name = $state('');
-  let location = $state('~/Documents');
+  let location = $state('');
   let password = $state('');
   let confirmation = $state('');
   let sealed = $state(false);
   let busy = $state(false);
+  /** What went wrong, if anything did. */
+  let problem = $state<string | null>(null);
 
   const strength = $derived(passwordStrength(password));
   const strengthLabel = $derived(
@@ -42,17 +45,35 @@
   // appears on the first keystroke of the second field is noise, not help.
   const mismatch = $derived(confirmation.length > 0 && password !== confirmation);
   const ready = $derived(
-    name.trim().length > 0 && password.length > 0 && password === confirmation && !busy,
+    name.trim().length > 0 &&
+      location.length > 0 &&
+      password.length > 0 &&
+      password === confirmation &&
+      !busy,
   );
+
+  async function choose() {
+    const chosen = await chooseFolder(t.vaultLocation);
+    if (chosen !== null) {
+      location = chosen;
+      problem = null;
+    }
+  }
 
   async function submit(event: Event) {
     event.preventDefault();
     if (!ready) return;
 
     busy = true;
+    problem = null;
     try {
       await backend.createVault(name.trim(), location, password, sealed);
       oncreated();
+    } catch (error) {
+      // A folder that already holds a vault, a disk with no room, a place the
+      // user cannot write to. All ordinary, all invisible until now: without
+      // this the button simply stopped spinning and nothing happened.
+      problem = error instanceof Error ? error.message : String(error);
     } finally {
       busy = false;
     }
@@ -74,9 +95,25 @@
     <div class="field">
       <span class="label">{t.vaultLocation}</span>
       <div class="row">
-        <input class="grow" bind:value={location} autocomplete="off" disabled={busy} />
-        <Button tip={t.tipVaultPath} disabled={busy} tipPlacement="top">{t.choose}</Button>
+        <input
+          class="grow"
+          bind:value={location}
+          placeholder={t.locationPlaceholder}
+          autocomplete="off"
+          disabled={busy}
+        />
+        <Button
+          tip={t.tipVaultPath}
+          disabled={busy || !isDesktop}
+          onclick={choose}
+          tipPlacement="top">{t.choose}</Button
+        >
       </div>
+      <!-- The vault is a folder of its own, and where it will be is worth
+           showing before the button is pressed rather than after. -->
+      {#if location.length > 0 && name.trim().length > 0}
+        <span class="destination faint">{location}/{name.trim()}</span>
+      {/if}
     </div>
 
     <label class="field">
@@ -136,6 +173,13 @@
       </span>
     </div>
 
+    {#if problem !== null}
+      <p class="problem" role="alert">
+        <Icon name="warning" size={15} />
+        {problem}
+      </p>
+    {/if}
+
     <div class="actions">
       <Button tip={t.cancel} variant="ghost" onclick={oncancel} tipPlacement="top">
         {t.cancel}
@@ -152,6 +196,24 @@
     max-width: 520px;
     margin: 0 auto;
     padding: 34px 24px 56px;
+  }
+
+  .destination {
+    margin-top: 5px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    overflow-wrap: anywhere;
+  }
+
+  .problem {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 13px;
+    border-radius: var(--radius-sm);
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 12.5px;
   }
 
   form {

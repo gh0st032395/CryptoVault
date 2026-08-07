@@ -9,6 +9,7 @@ members = [
     "crates/cv-session",
     "crates/cv-render",
     "crates/cv-cli",
+    "crates/cv-desktop",
 ]
 # Fuzzing needs nightly; `fuzz/` is its own workspace so the pinned stable
 # toolchain here never has to know about it.
@@ -67,8 +68,31 @@ serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"          # CBOR byte strings, rather than arrays of integers
 data-encoding = "2.6"         # base64url for names, base32 for directory hashes
 
+# The desktop application.
+#
+# Tauri rather than Electron: the window is the operating system's own webview,
+# so the application ships a few megabytes of Rust instead of a browser, and the
+# part that touches vaults is Rust that the rest of this workspace already
+# tests. `config-json5` buys the one thing a plain `.json` config cannot have —
+# comments — and the file it applies to contains the content security policy,
+# which is not a line anyone should have to guess the reasoning behind.
+tauri = { version = "2", features = ["config-json5"] }
+tauri-build = { version = "2", features = ["config-json5"] }
+# The system folder picker. Choosing where a vault lives is the one thing the
+# interface genuinely cannot do for itself: a typed path is a typo away from a
+# vault in the wrong place, and `~` is a shell convention, not a directory.
+tauri-plugin-dialog = "2"
+# Where the platform keeps an application's own files. Tauri knows this too, but
+# only once an application is running — and the vault list has to be read before
+# that, because a failure inside Tauri's setup hook is a panic rather than an
+# error. Already in the tree underneath Tauri, so it costs nothing new.
+dirs = "6"
+
 # Test-only.
 tempfile = "3.10"             # throwaway vaults for integration tests
+# The shape of what crosses to the interface is a contract, so it is asserted
+# rather than assumed. Already in the tree by way of Tauri; test-only here.
+serde_json = "1.0"
 
 # Lints applied to every crate in the workspace. These are conditions of merge,
 # not suggestions; CI runs with warnings denied.

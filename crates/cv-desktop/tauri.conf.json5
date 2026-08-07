@@ -1,0 +1,70 @@
+// The desktop application's configuration.
+//
+// JSON5 rather than JSON for one reason: this file contains the content
+// security policy, and a security policy nobody can annotate is a security
+// policy nobody can review.
+{
+  $schema: "https://schema.tauri.app/config/2",
+  productName: "CryptoVault",
+  version: "0.1.0",
+  identifier: "app.cryptovault.desktop",
+
+  build: {
+    // Where the built interface is. Relative to this file, and embedded in the
+    // binary at compile time — which is why `cargo build` needs `ui/dist` to
+    // exist, and why `scripts/check.sh` builds it before it builds anything.
+    frontendDist: "../../ui/dist",
+    // What a development build loads instead. Which of the two is used is
+    // decided by the Tauri CLI, not by the cargo profile: a plain
+    // `cargo build --release` still points the window at this URL.
+    devUrl: "http://localhost:5173",
+    // No `beforeDevCommand` or `beforeBuildCommand` on purpose. They run from
+    // the parent of this directory while `frontendDist` above is relative to
+    // this file — two different bases in one file, and the kind of thing that
+    // is discovered by a build failing on somebody else's machine. Building the
+    // interface is an explicit step instead; see the crate documentation.
+  },
+
+  app: {
+    windows: [
+      {
+        // Named, because the capability file below grants permissions to this
+        // window by name rather than to whatever window happens to exist.
+        label: "main",
+        title: "CryptoVault",
+        width: 1040,
+        height: 720,
+        minWidth: 680,
+        minHeight: 460,
+      },
+    ],
+
+    security: {
+      // The interface never talks to anything, and this is where that is
+      // enforced for the packaged application — the `<meta>` tag in
+      // `ui/index.html` covers the same ground for a browser.
+      //
+      // `connect-src` is the line to read carefully. It is not `'none'`,
+      // because it cannot be: `ipc:` and `http://ipc.localhost` are how the
+      // window reaches the Rust half, and Tauri's own IPC would be blocked
+      // along with everything else. Neither is a network destination — both
+      // are custom protocols intercepted by the webview and answered in
+      // process — so no request can leave the machine. Every scheme that could
+      // is still absent, and that is the property worth keeping.
+      csp: "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'",
+    },
+  },
+
+  bundle: {
+    // Installers, signing and notarisation are M10. What is here is enough to
+    // build and run the application, and deliberately not enough to ship it:
+    // an unsigned installer that happens to work is how an unsigned installer
+    // reaches a user.
+    active: false,
+    targets: "all",
+    // `icons/icon.png` is not optional even with bundling off — it is the
+    // window's own icon, and the build fails without it. The `.icns` and `.ico`
+    // that macOS and Windows installers want are generated from it in M10.
+    icon: ["icons/32x32.png", "icons/128x128.png", "icons/icon.png"],
+  },
+}

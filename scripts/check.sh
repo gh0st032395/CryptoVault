@@ -20,6 +20,18 @@ FAST=0
 step() { printf '\n\033[1;34m▸ %s\033[0m\n' "$1"; }
 skip() { printf '\n\033[1;33m▸ %s (skipped: %s)\033[0m\n' "$1" "$2"; }
 
+# The interface comes first, and not for tidiness: `cv-desktop` embeds
+# `ui/dist` at compile time, so without this step `cargo clippy` and
+# `cargo test` fail outright on a clean checkout — and on a dirty one they
+# quietly check the interface as it was the last time somebody built it.
+step "Interface (types, Svelte, and the build the desktop binary embeds)"
+if [[ ! -d ui/node_modules ]]; then
+    printf '\033[1;31mui/node_modules is missing. Run:\033[0m npm --prefix ui ci\n' >&2
+    exit 1
+fi
+npm --prefix ui run check
+npm --prefix ui run build
+
 step "Formatting"
 cargo fmt --all -- --check
 

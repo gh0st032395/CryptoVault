@@ -28,6 +28,8 @@
   let entries = $state<Entry[]>([]);
   let selection = $state<Set<string>>(new Set());
   let filter = $state('');
+  /** Why this folder is not on screen, when it is not. */
+  let problem = $state<string | null>(null);
 
   const segments = $derived(path.split('/').filter((part) => part.length > 0));
 
@@ -87,12 +89,33 @@
     viewport?.scrollTo({ top: 0 });
   });
 
+  /*
+   * Reading a directory can fail now that there is a real vault under it — a
+   * folder removed by something else, a disk that went away, a vault that
+   * locked itself while the listing was in flight.
+   *
+   * The guard on `current` is what keeps a slow answer from overwriting a fast
+   * one: click into a large folder, click back out before it lands, and without
+   * it the browser would show the first folder's contents under the second
+   * folder's name.
+   */
   $effect(() => {
     const current = path;
-    void backend.readDir(vault.id, current).then((list) => {
-      entries = list;
-      selection = new Set();
-    });
+    problem = null;
+
+    void backend
+      .readDir(vault.id, current)
+      .then((list) => {
+        if (current !== path) return;
+        entries = list;
+        selection = new Set();
+      })
+      .catch((error: unknown) => {
+        if (current !== path) return;
+        entries = [];
+        selection = new Set();
+        problem = error instanceof Error ? error.message : t.couldNotRead;
+      });
   });
 
   function go(to: string) {
@@ -175,7 +198,13 @@
     bind:this={viewport}
     onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
   >
-    {#if visible.length === 0}
+    {#if problem !== null}
+      <div class="empty problem" role="alert">
+        <Icon name="warning" size={26} />
+        <h2>{t.couldNotRead}</h2>
+        <p class="muted">{problem}</p>
+      </div>
+    {:else if visible.length === 0}
       <div class="empty">
         <Icon name="folder" size={26} />
         <h2>{t.emptyFolder}</h2>
@@ -414,5 +443,14 @@
     padding: 76px 20px;
     color: var(--text-faint);
     text-align: center;
+  }
+
+  .empty.problem {
+    color: var(--danger);
+  }
+
+  .empty.problem .muted {
+    max-width: 52ch;
+    overflow-wrap: anywhere;
   }
 </style>

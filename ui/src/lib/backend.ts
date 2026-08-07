@@ -1,14 +1,17 @@
 /**
  * The boundary between the interface and the vault.
  *
- * Everything the interface can ask for is in this one type. The implementation
- * today is a demonstration one that keeps a tree in memory; the Tauri
- * implementation, which calls into `cv-vfs`, drops in behind the same interface
- * without the screens noticing.
+ * Everything the interface can ask for is in this one type, and it has two
+ * implementations: {@link TauriBackend} in `tauri.ts`, which calls into Rust,
+ * and {@link DemoBackend} in `demo.ts`, which keeps a tree in memory.
  *
- * Keeping the boundary explicit has a second use: the interface can be
- * developed, looked at and reviewed in a browser, which is a much faster loop
- * than rebuilding a desktop application for every change of padding.
+ * The demonstration one has not been kept out of nostalgia. It is what lets the
+ * interface be developed, looked at and reviewed in a browser — a much faster
+ * loop than rebuilding a desktop application for every change of padding — and
+ * it is the only way to see a directory of five thousand entries without first
+ * making one.
+ *
+ * Which one is in use is decided once, in `App.svelte`, from `isDesktop`.
  */
 
 export type EntryKind = 'file' | 'directory';
@@ -31,17 +34,42 @@ export interface VaultSummary {
   readonly sealed: boolean;
 }
 
-export class WrongPassword extends Error {
+/**
+ * A failure that came back from the vault.
+ *
+ * `kind` is the same stable tag `SessionError::kind` produces in Rust, and it
+ * is what the interface branches on. Matching on the message instead would work
+ * until the day somebody translates it, and then fail silently.
+ */
+export class VaultFailure extends Error {
+  readonly kind: string;
+
+  constructor(kind: string, message: string) {
+    super(message);
+    this.name = 'VaultFailure';
+    this.kind = kind;
+  }
+}
+
+/** The credential was wrong. Trying again is a sensible response. */
+export class WrongPassword extends VaultFailure {
   constructor() {
-    super('wrong password');
+    super('wrong-password', 'wrong password');
     this.name = 'WrongPassword';
   }
 }
 
 export interface Backend {
   listVaults(): Promise<VaultSummary[]>;
-  /** Creates a vault and registers it. It is left locked, deliberately. */
-  createVault(name: string, path: string, password: string, sealed: boolean): Promise<string>;
+  /**
+   * Creates a vault in a folder named after it, inside `parent`, and registers
+   * it. It is left locked, deliberately.
+   */
+  createVault(name: string, parent: string, password: string, sealed: boolean): Promise<string>;
+  /** Adds a vault that already exists on disk. Rejects if `path` holds none. */
+  registerVault(name: string, path: string): Promise<string>;
+  /** Drops a vault from the list. Does not touch the folder it names. */
+  forgetVault(id: string): Promise<void>;
   /** Rejects with {@link WrongPassword} if the credential is wrong. */
   unlock(id: string, password: string): Promise<void>;
   lock(id: string): Promise<void>;
@@ -49,206 +77,6 @@ export interface Backend {
   createDir(id: string, path: string): Promise<void>;
   remove(id: string, path: string): Promise<void>;
   rename(id: string, from: string, to: string): Promise<void>;
-}
-
-// --- demonstration backend --------------------------------------------------
-
-/** Marks the interface as running on invented data, so it can say so. */
-export const IS_DEMO = true;
-
-interface DemoNode {
-  kind: EntryKind;
-  size: number;
-  modified: number | null;
-  children?: Record<string, DemoNode>;
-}
-
-const DEMO_PASSWORD = 'cryptovault';
-
-function file(size: number, modified: number): DemoNode {
-  return { kind: 'file', size, modified };
-}
-
-function folder(children: Record<string, DemoNode>): DemoNode {
-  return { kind: 'directory', size: 0, modified: null, children };
-}
-
-/**
- * An in-memory vault, so the interface has something to show.
- *
- * The awkward names are not padding: they are the ones a host filesystem would
- * refuse, and the interface has to render them correctly because a real vault
- * can hold them.
- */
-function demoTree(): DemoNode {
-  return folder({
-    Documenti: folder({
-      '2026': folder({
-        'fattura marzo.pdf': file(184_320, 1_772_000_000),
-        'report: Q1*.txt': file(4_096, 1_771_400_000),
-        'note di riunione.md': file(11_240, 1_771_900_000),
-      }),
-      'contratto firmato.pdf': file(892_311, 1_769_000_000),
-    }),
-    Foto: folder({
-      'panorama 🏔️.jpg': file(3_884_102, 1_768_100_000),
-      'scansione documento.png': file(1_204_558, 1_767_500_000),
-    }),
-    'chiavi ssh': folder({
-      id_ed25519: file(464, 1_760_000_000),
-      'id_ed25519.pub': file(98, 1_760_000_000),
-    }),
-    'archivio.tar.zst': file(52_428_800, 1_766_000_000),
-    // A directory large enough that rendering every row would be visible as
-    // sluggishness. It is here so the windowing is exercised by simply opening
-    // the demonstration vault, rather than only by a test nobody runs.
-    'molti file': folder(
-      Object.fromEntries(
-        Array.from({ length: 5000 }, (_, i) => [
-          `documento ${String(i).padStart(4, '0')}.txt`,
-          file(1024 + i * 7, 1_760_000_000 + i * 3600),
-        ]),
-      ),
-    ),
-    'password del wifi.txt': file(37, 1_772_100_000),
-  });
-}
-
-/** Splits `/a/b/c` into its components, ignoring empty ones. */
-function components(path: string): string[] {
-  return path.split('/').filter((part) => part.length > 0);
-}
-
-export class DemoBackend implements Backend {
-  #tree = demoTree();
-  #unlocked = new Set<string>();
-
-  #vaults: VaultSummary[] = [
-    {
-      id: 'personal',
-      name: 'Personale',
-      path: '~/Documents/Vault personale',
-      unlocked: false,
-      sealed: false,
-    },
-    {
-      id: 'sealed',
-      name: 'Documenti riservati',
-      path: '~/Dropbox/Riservati',
-      unlocked: false,
-      sealed: true,
-    },
-  ];
-
-  /** The password every demonstration vault opens with. */
-  static readonly password = DEMO_PASSWORD;
-
-  async listVaults(): Promise<VaultSummary[]> {
-    return this.#vaults.map((vault) => ({
-      ...vault,
-      unlocked: this.#unlocked.has(vault.id),
-    }));
-  }
-
-  async createVault(
-    name: string,
-    path: string,
-    _password: string,
-    sealed: boolean,
-  ): Promise<string> {
-    await pause(1100); // calibration plus creation, roughly
-    const id = `created-${this.#vaults.length}`;
-    // Locked, matching `cv-session`: creation is not a back door into an open
-    // vault, and typing the password once more is the cheapest check that it
-    // was typed as intended.
-    this.#vaults = [...this.#vaults, { id, name, path: `${path}/${name}`, unlocked: false, sealed }];
-    return id;
-  }
-
-  async unlock(id: string, password: string): Promise<void> {
-    // The real unlock spends about a second in Argon2id. Reproducing the delay
-    // matters: an interface that feels instant here would be designed around a
-    // wait that does not exist, and would need reworking the moment it did.
-    await pause(900);
-    if (password !== DEMO_PASSWORD) {
-      throw new WrongPassword();
-    }
-    this.#unlocked.add(id);
-  }
-
-  async lock(id: string): Promise<void> {
-    this.#unlocked.delete(id);
-  }
-
-  async readDir(_id: string, path: string): Promise<Entry[]> {
-    const node = this.#resolve(path);
-    const children = node?.children ?? {};
-
-    return Object.entries(children)
-      .map(([name, child]) => ({
-        name,
-        kind: child.kind,
-        size: child.size,
-        modified: child.modified,
-      }))
-      .sort(byKindThenName);
-  }
-
-  async createDir(_id: string, path: string): Promise<void> {
-    const parts = components(path);
-    const name = parts.pop();
-    if (name === undefined) return;
-
-    const parent = this.#resolve('/' + parts.join('/'));
-    if (parent?.children) {
-      parent.children[name] = folder({});
-    }
-  }
-
-  async remove(_id: string, path: string): Promise<void> {
-    const parts = components(path);
-    const name = parts.pop();
-    if (name === undefined) return;
-
-    const parent = this.#resolve('/' + parts.join('/'));
-    if (parent?.children) {
-      delete parent.children[name];
-    }
-  }
-
-  async rename(_id: string, from: string, to: string): Promise<void> {
-    const fromParts = components(from);
-    const fromName = fromParts.pop();
-    const toParts = components(to);
-    const toName = toParts.pop();
-    if (fromName === undefined || toName === undefined) return;
-
-    const source = this.#resolve('/' + fromParts.join('/'));
-    const target = this.#resolve('/' + toParts.join('/'));
-    const node = source?.children?.[fromName];
-
-    if (source?.children && target?.children && node) {
-      delete source.children[fromName];
-      target.children[toName] = node;
-    }
-  }
-
-  #resolve(path: string): DemoNode | undefined {
-    let node: DemoNode | undefined = this.#tree;
-    for (const part of components(path)) {
-      node = node?.children?.[part];
-    }
-    return node;
-  }
-}
-
-function byKindThenName(a: Entry, b: Entry): number {
-  if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1;
-  return a.name.localeCompare(b.name);
-}
-
-function pause(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Human-readable size. Binary units, because that is what a disk reports. */
@@ -272,4 +100,10 @@ export function formatDate(unixSeconds: number | null, language: string): string
     month: 'short',
     day: 'numeric',
   });
+}
+
+/** The last component of a path, whichever separator the platform uses. */
+export function basename(path: string): string {
+  const parts = path.split(/[/\\]/).filter((part) => part.length > 0);
+  return parts[parts.length - 1] ?? path;
 }

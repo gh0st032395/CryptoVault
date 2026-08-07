@@ -21,8 +21,17 @@
 //! removes it, which drops it, which wipes the derived keys. There is no
 //! separate "locked" state that could be got wrong — the presence of the value
 //! *is* the state.
+//!
+//! # Which vaults exist outlives the process; which are open does not
+//!
+//! [`Session::open`] reads the list from a file and writes it back whenever it
+//! changes, so an application does not forget where the user's vaults are every
+//! time it starts. What is *never* written is the fact that a vault was
+//! unlocked: every run begins with everything shut.
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
+
+mod registry;
 
 use std::path::{Path, PathBuf};
 
@@ -32,6 +41,8 @@ use cv_vault::{CreateOptions, Vault, VaultError};
 use cv_vfs::{DirectVaultFs, VPath, VaultFs, VfsError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use registry::{Registry, StoredVault};
 
 /// How long vault creation is allowed to spend calibrating Argon2id.
 const CALIBRATION_TARGET: std::time::Duration = std::time::Duration::from_secs(1);
@@ -161,13 +172,47 @@ struct Registered {
 pub struct Session {
     vaults: Vec<Registered>,
     next_id: u64,
+    /// Where the list is written down, when it is written down at all.
+    registry: Option<PathBuf>,
 }
 
 impl Session {
-    /// An empty session.
+    /// An empty session that forgets everything when it ends.
+    ///
+    /// What tests use, and what an application uses only if it genuinely has
+    /// nowhere to write.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A session backed by the list of vaults stored at `path`.
+    ///
+    /// Every vault in the file is registered, locked. The file not existing is
+    /// the ordinary first run and produces an empty session; the file existing
+    /// and being unreadable is an error, because replacing it with an empty list
+    /// would present a user with no vaults and no way to tell why.
+    ///
+    /// Whether each folder is still there is deliberately not checked. A vault
+    /// on a drive that is currently unplugged has not stopped existing, and an
+    /// application that quietly dropped it from the list would be wrong in the
+    /// one direction that loses information.
+    ///
+    /// # Errors
+    ///
+    /// [`SessionError::Failed`] if the file exists and cannot be read.
+    pub fn open(path: &Path) -> Result<Self, SessionError> {
+        let stored = Registry::load(path)?;
+
+        let mut session = Self {
+            registry: Some(path.to_path_buf()),
+            ..Self::default()
+        };
+        for vault in stored.vaults {
+            session.insert(&vault.name, &vault.path, vault.sealed);
+        }
+
+        Ok(session)
     }
 
     /// Adds a vault that already exists on disk, without opening it.
@@ -177,13 +222,35 @@ impl Session {
     /// [`SessionError::Failed`] if there is no vault there. Registering a
     /// folder that turns out not to be a vault would produce an entry that can
     /// never be unlocked and no explanation of why.
+    ///
+    /// Also if the list cannot be written. The vault is registered for this run
+    /// either way — the failure is only about remembering it for the next one.
     pub fn register(&mut self, name: &str, path: &Path) -> Result<String, SessionError> {
         if !Vault::exists_at(path) {
             return Err(SessionError::Failed {
                 message: format!("there is no vault at {}", path.display()),
             });
         }
-        Ok(self.insert(name, path, false))
+
+        let id = self.insert(name, path, sealed_flag(path));
+        self.persist()?;
+        Ok(id)
+    }
+
+    /// Removes a vault from the list, leaving everything on disk alone.
+    ///
+    /// The folder is not touched — this is "stop showing me this", not "delete
+    /// my files", and the two must never be the same button. If the vault was
+    /// open it is dropped, which locks it: forgetting an open vault cannot leave
+    /// its keys behind in memory.
+    ///
+    /// # Errors
+    ///
+    /// [`SessionError::UnknownVault`], or a failure to write the list.
+    pub fn forget(&mut self, id: &str) -> Result<(), SessionError> {
+        let index = self.index_of(id)?;
+        drop(self.vaults.remove(index));
+        self.persist()
     }
 
     /// Creates a vault and registers it, leaving it locked.
@@ -196,8 +263,12 @@ impl Session {
     ///
     /// # Errors
     ///
-    /// [`SessionError::Failed`] if a vault already exists there or it cannot be
-    /// written.
+    /// [`SessionError::Failed`] if a vault already exists there, if it cannot be
+    /// written, or if the list of vaults cannot be saved afterwards. In that
+    /// last case the vault itself was created and is usable for this run; the
+    /// message says so, because "creation failed" over a folder that now exists
+    /// is the kind of half-truth that makes people try again and hit "a vault
+    /// already exists there".
     pub fn create(
         &mut self,
         name: &str,
@@ -218,7 +289,13 @@ impl Session {
         };
         drop(Vault::create(path, password.as_bytes(), options)?);
 
-        Ok(self.insert(name, path, sealed))
+        let id = self.insert(name, path, sealed);
+        self.persist().map_err(|error| SessionError::Failed {
+            message: format!(
+                "the vault was created, but the list of vaults was not saved: {error}"
+            ),
+        })?;
+        Ok(id)
     }
 
     /// Every registered vault, in the order they were added.
@@ -252,8 +329,20 @@ impl Session {
         }
 
         let vault = Vault::open(&self.vaults[index].path, password.as_bytes())?;
+
+        // Now that the configuration has been authenticated, this is the value
+        // to believe — `sealed_flag` read it without checking the MAC, which is
+        // the best that can be done before a password exists.
+        let corrected = self.vaults[index].sealed != vault.config().sealed;
         self.vaults[index].sealed = vault.config().sealed;
         self.vaults[index].open = Some(DirectVaultFs::new(vault));
+
+        if corrected {
+            // Best effort on purpose. The vault is open and the caller is about
+            // to use it; failing the unlock because a badge could not be written
+            // down would be a much worse answer than a stale badge.
+            let _ = self.persist();
+        }
         Ok(())
     }
 
@@ -349,6 +438,27 @@ impl Session {
 
     // --- internals ---------------------------------------------------------
 
+    /// Writes the list down, if this session has anywhere to write it.
+    fn persist(&self) -> Result<(), SessionError> {
+        let Some(path) = self.registry.as_ref() else {
+            return Ok(());
+        };
+
+        let stored = Registry {
+            vaults: self
+                .vaults
+                .iter()
+                .map(|vault| StoredVault {
+                    name: vault.name.clone(),
+                    path: vault.path.clone(),
+                    sealed: vault.sealed,
+                })
+                .collect(),
+        };
+
+        stored.save(path)
+    }
+
     fn insert(&mut self, name: &str, path: &Path, sealed: bool) -> String {
         self.next_id += 1;
         let id = format!("v{}", self.next_id);
@@ -384,6 +494,26 @@ impl Session {
 
 fn parse(path: &str) -> Result<VPath, SessionError> {
     VPath::parse(path).map_err(SessionError::from)
+}
+
+/// Whether the vault at `path` is sealed, read without a password.
+///
+/// `vault.cvconf` is authenticated rather than encrypted, so this much is
+/// legible before anyone types anything — which is the only reason a list of
+/// locked vaults can show the badge at all.
+///
+/// It is read *unverified*: the MAC cannot be checked without the key. Someone
+/// who can rewrite the configuration could therefore make a sealed vault look
+/// ordinary in the list. That is acceptable here and nowhere else, because the
+/// value is replaced by the authenticated one the moment the vault is opened,
+/// and because an attacker who can rewrite files in the vault folder is already
+/// past the point this flag protects. Anything unreadable reports `false`: a
+/// folder that is not a vault has no policy to report.
+fn sealed_flag(path: &Path) -> bool {
+    std::fs::read(path.join(cv_format::consts::VAULT_CONFIG_NAME))
+        .ok()
+        .and_then(|bytes| cv_format::config::VaultConfig::decode_unverified(&bytes).ok())
+        .is_some_and(|config| config.sealed)
 }
 
 const fn kind_name(kind: EntryKind) -> &'static str {

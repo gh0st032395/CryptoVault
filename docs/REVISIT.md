@@ -101,9 +101,12 @@ that people stop running it, which makes it useless.
 `add` and `get` copy in a loop with no way to stop them and nothing to report.
 Deferred from M2 because progress needs somewhere to be shown.
 
-*Revisit when:* it is wired to a real backend. Progress bars over a mock are
-theatre, so this waits for R-13 rather than being built against invented
-latency.
+*Revisit when:* M4. The backend is real now, so the objection that progress bars
+over a mock are theatre no longer applies — what is left is that the operations
+needing progress are the ones that copy plaintext in and out, which is the
+subject M4 exists for. See also [R-26], whose buttons these are.
+
+[R-26]: #-r-26--half-the-browsers-toolbar-does-nothing
 
 ### 🟡 R-10 — Metadata cannot be changed on an open file
 **From:** M2 · **Due:** M6
@@ -133,31 +136,99 @@ place; the memory locking is not, so a derived key can be paged to disk.
 *Revisit when:* M10 at the latest. It needs one `unsafe` call per platform and a
 graceful fallback where the operating system refuses.
 
-### 🟠 R-13 — The interface still runs on a demonstration backend
-**From:** M3 · **Due:** M3
+### 🟠 R-26 — Half the browser's toolbar does nothing
+**From:** M3 · **Due:** M4
 
-`ui/src/lib/backend.ts` keeps a tree in memory. Nothing on screen has ever
-spoken to a real vault, so every screen is unproven against real latency, real
-errors and real directories.
+New folder, Add files, Extract, Rename and Remove are drawn, have tooltips, and
+have no `onclick`. That was defensible while the backend was invented — there
+was nothing real to do — and it is not defensible now that the buttons sit above
+a real vault, because a button that does nothing reads as a bug in the vault
+rather than an unfinished screen.
 
-The Rust half now exists: `cv-session` holds the registry of vaults, which are
-open, and every operation the interface needs, tested against real vaults on
-disk. What is missing is only the Tauri shim — an attribute per method, a
-builder, a window, and a TypeScript client that calls them.
+Rename, Remove and New folder need only wiring: `cv-session` has all three and
+they are tested. Add files and Extract need progress and cancellation, which is
+R-08, which is M4.
 
-*Revisit when:* that shim lands. It is deliberately thin, and if it ever starts
-making decisions they belong in `cv-session` instead.
+*Revisit when:* M4, or sooner for the three that are only wiring. Whichever
+comes first, the buttons that cannot work yet should say so rather than being
+silently inert.
+
+### 🟡 R-23 — The password crosses to Rust as an ordinary string
+**From:** M3 · **Due:** M10
+
+`unlock` and `create_vault` take the password as JSON. It therefore exists as a
+JavaScript string in the webview's heap, as a `String` in the Tauri command, and
+as a `&str` on the way into `cv-session` — none of which are wiped, and the
+first of which cannot be, because a JavaScript engine moves and copies strings
+as it pleases.
+
+Everything below `cv-session` is careful about this: `SecretBytes` wipes on drop
+and `Zeroizing` covers the derived keys. The boundary is where the care stops,
+which is worth writing down rather than leaving as an implication.
+
+*Revisit when:* M10, with [R-12] — memory locking and password lifetime are the
+same conversation, and the same one that biometrics in M11 changes, since a
+credential that never passes through the window has none of this problem.
+
+[R-12]: #-r-12--key-material-is-not-locked-out-of-swap
+
+### 🟡 R-27 — Nothing automated proves the commands are wired up
+**From:** M3 · **Due:** M4
+
+`cv-desktop`'s error conversion has tests, and everything underneath it has 356.
+What has no test is the wiring itself: that `generate_handler!` lists every
+command, and that the argument names in `ui/src/lib/tauri.ts` match the Rust
+parameters. Tauri matches those by name and treats a name that matches nothing
+as an absent argument, so a rename on one side fails silently on the other —
+which is the one class of mistake the type checkers on both sides cannot see.
+
+It was checked by hand for this milestone: create, unlock, list, make a
+directory, read it back, rename, lock, and both error tags, driven through the
+real IPC of a packaged build against a real vault on disk. That is evidence, and
+it is not a test — it does not run again tomorrow.
+
+*Revisit when:* M4 adds commands. `tauri::test::mock_builder` runs commands
+without a window, which is the shape this needs.
+
+### 🟡 R-24 — A damaged vault list stops the application from starting
+**From:** M3 · **Due:** —
+
+`Session::open` refuses to start on a registry it cannot parse, and the desktop
+application turns that into a message on standard error and an exit code. For a
+user with no terminal open, that is an application that does not launch.
+
+Silently starting with an empty list would be worse — vaults gone, no
+explanation — so the behaviour is right and the presentation is not. The file is
+also trivially replaceable: deleting it loses the list of vaults, never a vault.
+
+*Revisit when:* there is anywhere to show a startup failure. A window that opens
+and says what happened, with a button to start a fresh list, is the whole fix.
+
+### 🟡 R-25 — Sixteen unmaintained crates arrived with Tauri
+**From:** M3 · **Due:** M10
+
+`deny.toml` ignores sixteen RUSTSEC advisories, listed individually with
+reasons. Every one is *unmaintained* rather than a vulnerability: the gtk-rs
+GTK3 bindings (Linux only, and upstream's migration to GTK4 to make), the
+`unic-*` Unicode tables, and `proc-macro-error`, which runs only at build time.
+
+Unmaintained is a slow risk rather than an urgent one — nobody is watching those
+crates for the next bug — and it is not one this project can fix from here.
+
+*Revisit when:* M10. Shipping a binary is when "we depend on something nobody
+maintains" stops being a build-time observation.
 
 ### 🟡 R-22 — Creating a vault costs a second of calibration in every test
 **From:** M3 · **Due:** —
 
 `Session::create` calibrates Argon2id, which is right in production and makes
-`cv-session`'s tests take about six seconds because each one makes a vault.
+`cv-session`'s tests take about nine seconds because each one makes a vault. The
+registry tests added three more.
 
-*Revisit when:* it becomes the slowest part of the suite. The fix is a way to
-pass fixed parameters in — but an option that skips calibration is also an
-option a caller can reach for in production, so it needs to be shaped as
-"tests only" rather than "faster".
+*Revisit when:* it becomes the slowest part of the suite — which it now is. The
+fix is a way to pass fixed parameters in, but an option that skips calibration
+is also an option a caller can reach for in production, so it needs to be shaped
+as "tests only" rather than "faster".
 
 ### 🟡 R-15 — The third auto-lock policy is a stand-in
 **From:** M3 · **Due:** M4
@@ -171,15 +242,6 @@ failure auto-lock exists to prevent.
 
 *Revisit when:* M4 lands external-application sessions and there is a real
 notion of a file being open to postpone against.
-
-### 🟡 R-16 — Tooltips do not avoid the window edge
-**From:** M3 · **Due:** M3
-
-They render centred above or below their trigger with no collision detection, so
-one near the right edge of a narrow window will overflow.
-
-*Revisit when:* the window can be resized small, or a tooltip appears in a
-sidebar. Neither is true yet.
 
 ### 🟡 R-17 — The password strength meter is a heuristic
 **From:** M3 · **Due:** —
@@ -195,9 +257,10 @@ is a decision rather than an omission.
 ### 🟡 R-18 — Vite's hot reload does not work in development
 **From:** M3 · **Due:** —
 
-The content security policy sets `connect-src 'none'`, which blocks Vite's
-websocket. The policy is correct and the blocked connection in the console is
-the policy working; the cost is that changes need a manual reload.
+The content security policy's `connect-src` allows Tauri's IPC and nothing else,
+which blocks Vite's websocket. The policy is correct and the blocked connection
+in the console is the policy working; the cost is that changes need a manual
+reload.
 
 *Revisit when:* it becomes annoying enough. A development-only relaxation is
 possible and must never reach a build.
@@ -250,6 +313,8 @@ entry that was forgotten.
 
 | | Entry | Resolved in |
 |---|---|---|
+| 🟠 | **R-13** — the interface runs on a demonstration backend | M3 · `cv-desktop` puts a Tauri window over `cv-session`; the demonstration backend stays, for reviewing the interface in a browser |
+| 🟡 | **R-16** — tooltips do not avoid the window edge | M3 · measured when the tooltip mounts and slid back inside, 8 px from the edge |
 | 🟠 | **R-14** — the file list is not virtualised | M3 · only the visible rows exist in the DOM; 5000 entries render 33 |
 | 🟡 | **R-06** — Argon2id parameters are not calibrated | M3 · `kdf::calibrate` searches upward from the default and never below it |
 | 🟡 | **R-09** — removing a directory requires it to be empty | M3 · `Vault::remove_recursive`, deliberately a separate function |

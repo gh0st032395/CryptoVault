@@ -318,3 +318,115 @@ fn the_wire_types_keep_the_names_the_interface_expects() {
     assert_eq!(entry.kind, "file");
     assert_eq!(kind_name(EntryKind::Directory), "directory");
 }
+
+// --- remembering which vaults exist -----------------------------------------
+
+/// The whole point of the registry. An application that is closed and reopened
+/// has to still know where the user's vaults are; asking them to find the folder
+/// again every morning is not a security property, it is a defect.
+#[test]
+fn the_list_of_vaults_survives_the_session_that_made_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let list = dir.path().join("config/vaults.cbor");
+    let vault = dir.path().join("Vault personale");
+
+    let mut first = Session::open(&list).unwrap();
+    let id = first.create("Personale", &vault, PASSWORD, true).unwrap();
+    first.unlock(&id, PASSWORD).unwrap();
+    drop(first);
+
+    let second = Session::open(&list).unwrap();
+    let listed = second.list();
+
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].name, "Personale");
+    assert_eq!(listed[0].path, vault.display().to_string());
+    assert!(listed[0].sealed, "the policy must survive too");
+    // The one thing that must never be remembered. A run that began with a
+    // vault already open would be a vault opened without a password.
+    assert!(!listed[0].unlocked);
+}
+
+/// Forgetting is "stop showing me this", not "delete my files". The two must
+/// never turn out to be the same button.
+#[test]
+fn forgetting_a_vault_leaves_it_untouched_on_disk() {
+    let dir = tempfile::tempdir().unwrap();
+    let list = dir.path().join("vaults.cbor");
+    let path = dir.path().join("Vault");
+
+    let mut session = Session::open(&list).unwrap();
+    let id = session.create("Personale", &path, PASSWORD, false).unwrap();
+    session.unlock(&id, PASSWORD).unwrap();
+
+    session.forget(&id).unwrap();
+
+    assert!(session.list().is_empty());
+    assert!(
+        cv_vault::Vault::exists_at(&path),
+        "forgetting must not remove the vault itself"
+    );
+    // And it is gone from the next run as well, not just from this one.
+    assert!(Session::open(&list).unwrap().list().is_empty());
+    // The vault can be found again, which is what makes forgetting safe.
+    let mut again = Session::open(&list).unwrap();
+    let recovered = again.register("Personale", &path).unwrap();
+    again.unlock(&recovered, PASSWORD).unwrap();
+    assert!(again.list()[0].unlocked);
+}
+
+#[test]
+fn forgetting_a_vault_that_is_not_there_says_which_one() {
+    let mut session = Session::new();
+    let error = session.forget("v9").unwrap_err();
+
+    assert_eq!(error.kind(), "unknown-vault");
+    assert!(error.to_string().contains("v9"));
+}
+
+/// A sealed vault has to look sealed in the list *before* anybody types a
+/// password — otherwise the badge appears only once the vault is open, which is
+/// exactly when it is least needed.
+#[test]
+fn a_registered_vault_shows_its_policy_before_it_is_unlocked() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("Riservati");
+
+    let mut maker = Session::new();
+    maker.create("Riservati", &path, PASSWORD, true).unwrap();
+
+    let mut session = Session::new();
+    session.register("Riservati", &path).unwrap();
+
+    let listed = session.list();
+    assert!(listed[0].sealed);
+    assert!(!listed[0].unlocked, "reading the policy must not open it");
+}
+
+/// A session with nowhere to write is not a session that writes somewhere
+/// arbitrary. `Session::new` is what the tests use, and it must not litter.
+#[test]
+fn a_session_without_a_registry_writes_no_list() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut session = Session::new();
+    session
+        .create("Personale", &dir.path().join("Vault"), PASSWORD, false)
+        .unwrap();
+
+    let entries: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .filter_map(Result::ok)
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+
+    assert_eq!(entries, vec!["Vault".to_owned()]);
+}
+
+/// A first run has no file, and that is not a failure.
+#[test]
+fn opening_a_registry_that_does_not_exist_yet_gives_an_empty_session() {
+    let dir = tempfile::tempdir().unwrap();
+    let session = Session::open(&dir.path().join("never/written/vaults.cbor")).unwrap();
+
+    assert!(session.list().is_empty());
+}

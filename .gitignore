@@ -16,6 +16,13 @@ src-tauri/target/
 src-tauri/gen/apple/
 src-tauri/gen/android/
 
+# Tauri's generated permission schemas. The Tauri directory is `crates/cv-desktop`
+# here rather than the conventional `src-tauri`, because it is a crate in the
+# workspace like every other one. These files are regenerated from
+# `capabilities/` on every build, and committing them would mean reviewing a
+# machine-written diff every time a permission changes.
+/crates/cv-desktop/gen/
+
 # macOS
 .DS_Store
 .AppleDouble

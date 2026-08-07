@@ -28,6 +28,7 @@
     back: 'M19 12H5m0 0 6-6m-6 6 6 6',
     warning: 'M12 9v4m0 4h.01M10.3 4.3 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z',
     check: 'm5 13 4 4L19 7',
+    close: 'M6 6l12 12M18 6 6 18',
   } as const;
 
   const { name, size = 18 }: Props = $props();

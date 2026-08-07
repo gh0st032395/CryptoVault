@@ -26,6 +26,17 @@ function Invoke-Checked([string]$command, [string[]]$commandArgs) {
     }
 }
 
+# The interface comes first, and not for tidiness: cv-desktop embeds ui/dist at
+# compile time, so without this step cargo clippy and cargo test fail outright
+# on a clean checkout - and on a dirty one they quietly check the interface as
+# it was the last time somebody built it.
+Step 'Interface (types, Svelte, and the build the desktop binary embeds)'
+if (-not (Test-Path 'ui/node_modules')) {
+    throw 'ui/node_modules is missing. Run: npm --prefix ui ci'
+}
+Invoke-Checked npm @('--prefix', 'ui', 'run', 'check')
+Invoke-Checked npm @('--prefix', 'ui', 'run', 'build')
+
 Step 'Formatting'
 Invoke-Checked cargo @('fmt', '--all', '--', '--check')
 

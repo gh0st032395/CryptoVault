@@ -105,14 +105,41 @@ The full plan, with the reasoning behind each decision, is in [`PLAN.md`](PLAN.m
 
 ## Building from source
 
-Requires the Rust toolchain; the exact version is pinned in `rust-toolchain.toml`
-and `rustup` will fetch it for you.
+Requires the Rust toolchain — the exact version is pinned in
+`rust-toolchain.toml` and `rustup` will fetch it for you — and Node.js, because
+the desktop application embeds the interface in its binary. On Linux you also
+need the WebKitGTK development packages; Windows and macOS provide the webview
+themselves.
+
+The interface is built first. That order is not a preference: `cv-desktop`
+embeds `ui/dist` at compile time, so without it the Rust build fails.
 
 ```bash
 git clone https://github.com/gh0st032395/CryptoVault.git
 cd CryptoVault
+npm --prefix ui ci
+npm --prefix ui run build
 cargo build --workspace
 ```
+
+To run the desktop application while working on the interface, start the
+development server and the application separately:
+
+```bash
+npm --prefix ui run dev
+```
+
+```bash
+cargo run -p cv-desktop
+```
+
+To build the application itself, with the interface inside it:
+
+```bash
+npm --prefix ui run build && (cd crates/cv-desktop && tauri build --no-bundle)
+```
+
+Installers are M10, and `--no-bundle` is deliberate until then.
 
 Before every commit, run the single verification command — the same steps CI runs:
 
