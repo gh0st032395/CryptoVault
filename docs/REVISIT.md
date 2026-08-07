@@ -221,6 +221,22 @@ cost of a Node 20 deprecation warning on every job.
 long enough to resolve reliably. Not before — a pipeline that fails at random is
 worse than a warning, because it teaches you to ignore a red run.
 
+### 🟠 R-20 — Pull requests are gated on Linux only
+**From:** M3 · **Due:** M10
+
+The everyday check is one Ubuntu job. Windows and macOS moved to
+`cross-platform.yml`, which runs on merges to main, nightly, and on demand — so
+a platform break is caught within minutes of landing rather than before.
+
+The reason is queueing: seven jobs each waited for their own runner and the
+result arrived twenty minutes later, or never, because a job that never starts
+is eventually cancelled. A check nobody waits for is not a check.
+
+*Revisit when:* M10, when a release makes "broken on Windows for an hour" more
+expensive than it is now. Also worth reconsidering the moment the project has a
+second contributor, since the assumption that main gets fixed immediately is
+really an assumption about one person being available.
+
 ---
 
 ## Resolved

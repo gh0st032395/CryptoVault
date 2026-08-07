@@ -1,0 +1,90 @@
+# Windows, macOS and the supply-chain audit.
+#
+# Split out of the everyday gate deliberately. These are the scarce, slow
+# runners, and having them queue behind every pull request made the whole
+# pipeline take twenty minutes to say something the Ubuntu job had already said
+# in three.
+#
+# They still run — on every merge to main, so a platform break is caught within
+# minutes of landing rather than at release; nightly, so a dependency advisory
+# published today is seen tomorrow; and on demand before anything important.
+
+name: Cross-platform
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 04:00 UTC daily. Off-peak, when a runner is actually available.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build
+        run: cargo build --workspace --all-targets --all-features
+
+      - name: Test
+        run: cargo test --workspace --all-features
+
+  supply-chain:
+    name: Licences, advisories and dependency sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cargo tools
+        id: cache-tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: cargo-tools-deny-audit-v1
+
+      - name: Install cargo-deny and cargo-audit
+        if: steps.cache-tools.outputs.cache-hit != 'true'
+        run: cargo install --locked cargo-deny cargo-audit
+
+      # Licences, banned crates, and the requirement that every dependency comes
+      # from crates.io and nowhere else.
+      - name: cargo-deny
+        run: cargo deny check
+
+      # Known vulnerabilities. Separate from cargo-deny so the log says plainly
+      # which of the two failed.
+      - name: cargo-audit
+        run: cargo audit --deny warnings
