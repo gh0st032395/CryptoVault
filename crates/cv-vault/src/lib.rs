@@ -546,6 +546,32 @@ impl Vault {
         Ok(())
     }
 
+    /// Removes an entry and, for a directory, everything inside it.
+    ///
+    /// Separate from [`Vault::remove`] on purpose. Deleting a folder and its
+    /// contents is what a person expects from a file browser and is also the
+    /// operation that destroys the most with one gesture, so it is a different
+    /// function with a different name — an interface has to *ask* for it, and
+    /// cannot reach it by passing a directory to the ordinary remove.
+    ///
+    /// There is no trash yet, so this is permanent. Once M6 lands it should
+    /// route through the trash instead.
+    ///
+    /// # Errors
+    ///
+    /// [`VaultError::NotFound`] if there is no such entry, otherwise an I/O or
+    /// format error. A failure part-way leaves the vault consistent but
+    /// partially emptied: every entry already removed stays removed.
+    pub fn remove_recursive(&self, dir: DirId, name: &str) -> Result<(), VaultError> {
+        if self.require(dir, name)? == EntryKind::Directory {
+            let child = self.dir_id_of(dir, name)?;
+            for entry in self.read_dir(child)? {
+                self.remove_recursive(child, &entry.name)?;
+            }
+        }
+        self.remove(dir, name)
+    }
+
     /// Moves or renames an entry.
     ///
     /// Renaming a directory rewrites one file, whatever it contains: the

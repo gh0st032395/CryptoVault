@@ -10,8 +10,20 @@ import type { Language } from './i18n';
 
 export type ThemeChoice = 'light' | 'dark' | 'system';
 
+/**
+ * What happens when a vault has been left idle.
+ *
+ * `warn` is the default from the plan: a countdown that can be stopped, and a
+ * lock if nobody stops it. `immediate` skips the countdown. `manual` disables
+ * the timer entirely, which is a legitimate thing to want and also the exact
+ * failure auto-lock exists to prevent — so its tooltip says so rather than
+ * presenting the three as interchangeable.
+ */
+export type LockPolicy = 'warn' | 'immediate' | 'manual';
+
 const THEME_KEY = 'cryptovault.theme';
 const LANGUAGE_KEY = 'cryptovault.language';
+const POLICY_KEY = 'cryptovault.lockPolicy';
 
 /** Applies a choice to the document, resolving `system` against the OS. */
 export function applyTheme(choice: ThemeChoice): void {
@@ -29,6 +41,15 @@ export function loadTheme(): ThemeChoice {
 
 export function saveTheme(choice: ThemeChoice): void {
   localStorage.setItem(THEME_KEY, choice);
+}
+
+export function loadPolicy(): LockPolicy {
+  const stored = localStorage.getItem(POLICY_KEY);
+  return stored === 'warn' || stored === 'immediate' || stored === 'manual' ? stored : 'warn';
+}
+
+export function savePolicy(policy: LockPolicy): void {
+  localStorage.setItem(POLICY_KEY, policy);
 }
 
 export function loadLanguage(fallback: Language): Language {

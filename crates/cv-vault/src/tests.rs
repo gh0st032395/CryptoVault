@@ -341,6 +341,64 @@ fn removing_a_populated_directory_is_refused() {
     assert!(fixture.vault.read_dir(fixture.root).unwrap().is_empty());
 }
 
+/// What a file browser's delete has to do. Kept as its own function because it
+/// destroys the most with one gesture and an interface should have to ask.
+#[test]
+fn recursive_removal_empties_a_whole_subtree() {
+    let fixture = Fixture::new();
+    let top = fixture.vault.create_dir(fixture.root, "top").unwrap();
+    let middle = fixture.vault.create_dir(top, "middle").unwrap();
+    let bottom = fixture.vault.create_dir(middle, "bottom").unwrap();
+
+    for dir in [top, middle, bottom] {
+        for i in 0..3 {
+            write_file(&fixture.vault, dir, &format!("f{i}.txt"), b"x");
+        }
+    }
+    write_file(&fixture.vault, fixture.root, "untouched.txt", b"keep me");
+
+    fixture.vault.remove_recursive(fixture.root, "top").unwrap();
+
+    assert_eq!(
+        fixture.vault.read_dir(fixture.root).unwrap(),
+        vec![DirEntry {
+            name: "untouched.txt".into(),
+            kind: EntryKind::File
+        }]
+    );
+    // The emptied directories are gone from the disk too, so a deleted subtree
+    // does not keep leaking its former shape through empty folders.
+    assert!(fixture.vault.read_dir(bottom).unwrap().is_empty());
+    assert!(!fixture.vault.dir_disk_path(bottom).exists());
+}
+
+#[test]
+fn recursive_removal_of_a_single_file_is_just_a_removal() {
+    let fixture = Fixture::new();
+    write_file(&fixture.vault, fixture.root, "one.txt", b"x");
+
+    fixture
+        .vault
+        .remove_recursive(fixture.root, "one.txt")
+        .unwrap();
+    assert!(fixture.vault.read_dir(fixture.root).unwrap().is_empty());
+}
+
+/// The ordinary remove must keep refusing a populated directory: reaching the
+/// destructive behaviour has to be deliberate.
+#[test]
+fn the_ordinary_removal_still_refuses_a_populated_directory() {
+    let fixture = Fixture::new();
+    let child = fixture.vault.create_dir(fixture.root, "full").unwrap();
+    write_file(&fixture.vault, child, "inside.txt", b"x");
+
+    assert!(matches!(
+        fixture.vault.remove(fixture.root, "full"),
+        Err(VaultError::NotEmpty { .. })
+    ));
+    assert!(fixture.vault.remove_recursive(fixture.root, "full").is_ok());
+}
+
 #[test]
 fn renaming_a_file_keeps_its_contents() {
     let fixture = Fixture::new();

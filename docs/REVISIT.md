@@ -86,15 +86,6 @@ interactive use will not be found by the test suite.
 *Revisit when:* M10. Either Linux ships labelled beta, or there is a public test
 phase before the label comes off.
 
-### 🟡 R-06 — Argon2id parameters are not calibrated on the machine
-**From:** M1 · **Due:** M3
-
-`Argon2Params::default_profile()` is a fixed 256 MiB / 3 / 4. The documentation
-says vault creation calibrates upward from it; nothing does yet.
-
-*Revisit when:* M3 adds vault creation in the interface, which is the first place
-a calibration could run and show its result.
-
 ### 🟡 R-07 — `verify` reads a whole vault serially
 **From:** M2 · **Due:** M6
 
@@ -105,21 +96,14 @@ that people stop running it, which makes it useless.
 `rayon` parallelism is the obvious answer.
 
 ### 🟡 R-08 — No cancellation or progress in long operations
-**From:** M2 · **Due:** M3
+**From:** M2 · **Due:** M4 (moved)
 
 `add` and `get` copy in a loop with no way to stop them and nothing to report.
 Deferred from M2 because progress needs somewhere to be shown.
 
-*Revisit when:* M3, together with the operation queue in the interface.
-
-### 🟡 R-09 — Removing a directory requires it to be empty
-**From:** M2 · **Due:** M3
-
-There is no recursive remove. Correct and safe, and not what a user expects from
-a file browser.
-
-*Revisit when:* M3. A recursive delete needs a confirmation and — once M6 lands
-— should route through the trash rather than actually deleting.
+*Revisit when:* it is wired to a real backend. Progress bars over a mock are
+theatre, so this waits for R-13 rather than being built against invented
+latency.
 
 ### 🟡 R-10 — Metadata cannot be changed on an open file
 **From:** M2 · **Due:** M6
@@ -160,14 +144,18 @@ real errors, and real directories.
 one interface, so the swap is contained — but "it worked against the mock" is
 not evidence of anything.
 
-### 🟡 R-15 — Auto-lock has one policy, not three
-**From:** M3 · **Due:** M3
+### 🟡 R-15 — The third auto-lock policy is a stand-in
+**From:** M3 · **Due:** M4
 
-The plan settled on three user-selectable policies (warn and force, force
-immediately, never while files are open). Only the default is implemented, and
-it is not configurable.
+Three policies are implemented and selectable: warn then lock, lock at once,
+and never lock automatically. The plan's third option was "do not lock while
+files are open", which cannot mean anything until M4 gives files a way to *be*
+open. "Only when I ask" is the honest stand-in, and its tooltip says outright
+that a vault left open stays open — including all night, which is the exact
+failure auto-lock exists to prevent.
 
-*Revisit when:* the settings panel grows past appearance and language.
+*Revisit when:* M4 lands external-application sessions and there is a real
+notion of a file being open to postpone against.
 
 ### 🟡 R-16 — Tooltips do not avoid the window edge
 **From:** M3 · **Due:** M3
@@ -248,4 +236,6 @@ entry that was forgotten.
 | | Entry | Resolved in |
 |---|---|---|
 | 🟠 | **R-14** — the file list is not virtualised | M3 · only the visible rows exist in the DOM; 5000 entries render 33 |
+| 🟡 | **R-06** — Argon2id parameters are not calibrated | M3 · `kdf::calibrate` searches upward from the default and never below it |
+| 🟡 | **R-09** — removing a directory requires it to be empty | M3 · `Vault::remove_recursive`, deliberately a separate function |
 

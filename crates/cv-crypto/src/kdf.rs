@@ -218,6 +218,78 @@ pub fn derive_kek(
     Ok(kek)
 }
 
+/// Finds the strongest Argon2id profile this machine can run in about `target`.
+///
+/// Called once, when a vault is created. The result is written into the vault
+/// configuration, so a vault made on a workstation still opens on a netbook —
+/// just more slowly.
+///
+/// # How it searches, and why it only goes up
+///
+/// It starts at [`Argon2Params::default_profile`] and doubles the memory cost
+/// while a derivation still fits inside `target`, up to
+/// [`Argon2Params::MAX_MEMORY_KIB`]. It never searches *downwards*: a machine
+/// too slow for the default is not a reason to hand an attacker a cheaper
+/// guess, and the default is already the floor we are willing to ship.
+///
+/// So on a slow machine this returns the default and unlocking takes longer
+/// than `target`. That is the intended outcome, not a failure.
+///
+/// # Errors
+///
+/// Returns [`CryptoError::KeyDerivationFailed`] if even the default profile
+/// cannot run — in practice, if the machine cannot allocate 256 MiB.
+pub fn calibrate(target: std::time::Duration) -> Result<Argon2Params, CryptoError> {
+    let salt = [0_u8; SALT_LEN];
+    let password = b"calibration";
+
+    let mut best = Argon2Params::default_profile();
+    let elapsed = time_one(password, &salt, best)?;
+
+    // Already slower than asked for: stop, and keep the floor.
+    if elapsed >= target {
+        return Ok(best);
+    }
+
+    let mut memory = best.memory_kib();
+    while let Some(doubled) = memory.checked_mul(2) {
+        if doubled > Argon2Params::MAX_MEMORY_KIB {
+            break;
+        }
+
+        let Ok(candidate) = Argon2Params::new(doubled, best.iterations(), best.parallelism())
+        else {
+            break;
+        };
+
+        // A machine that cannot allocate the next step keeps what it has,
+        // rather than failing a vault creation that was going to work.
+        let Ok(took) = time_one(password, &salt, candidate) else {
+            break;
+        };
+        if took > target {
+            break;
+        }
+
+        best = candidate;
+        memory = doubled;
+    }
+
+    Ok(best)
+}
+
+/// One derivation, timed. Wall clock is the right measure here: it is what the
+/// user waits and what an attacker spends.
+fn time_one(
+    password: &[u8],
+    salt: &[u8; SALT_LEN],
+    params: Argon2Params,
+) -> Result<std::time::Duration, CryptoError> {
+    let started = std::time::Instant::now();
+    derive_kek(password, salt, params)?;
+    Ok(started.elapsed())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -380,6 +452,33 @@ mod tests {
                 }
             );
         }
+    }
+
+    // --- calibration -----------------------------------------------------
+
+    /// An impossibly short target must still return the default rather than
+    /// something weaker. The floor is the point.
+    #[test]
+    fn calibration_never_goes_below_the_default() {
+        let calibrated = calibrate(std::time::Duration::from_nanos(1)).unwrap();
+        assert_eq!(calibrated, Argon2Params::default_profile());
+    }
+
+    /// The result must always be a profile the validator accepts, whatever the
+    /// machine decided.
+    #[test]
+    fn calibration_returns_something_valid_and_at_least_the_default() {
+        let calibrated = calibrate(std::time::Duration::from_millis(1)).unwrap();
+        assert!(
+            Argon2Params::new(
+                calibrated.memory_kib(),
+                calibrated.iterations(),
+                calibrated.parallelism()
+            )
+            .is_ok()
+        );
+        assert!(calibrated.memory_kib() >= Argon2Params::DEFAULT_MEMORY_KIB);
+        assert!(calibrated.memory_kib() <= Argon2Params::MAX_MEMORY_KIB);
     }
 
     #[test]
