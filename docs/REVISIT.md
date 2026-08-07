@@ -104,9 +104,12 @@ Deferred from M2 because progress needs somewhere to be shown.
 *Revisit when:* M4. The backend is real now, so the objection that progress bars
 over a mock are theatre no longer applies — what is left is that the operations
 needing progress are the ones that copy plaintext in and out, which is the
-subject M4 exists for. See also [R-26], whose buttons these are.
+subject M4 exists for.
 
-[R-26]: #-r-26--half-the-browsers-toolbar-does-nothing
+The two buttons that need this — Add files and Extract — are disabled in the
+browser, and their tooltips say they are not built rather than leaving a control
+that swallows a click. Everything on that toolbar that does not need progress
+is wired.
 
 ### 🟡 R-10 — Metadata cannot be changed on an open file
 **From:** M2 · **Due:** M6
@@ -135,23 +138,6 @@ place; the memory locking is not, so a derived key can be paged to disk.
 
 *Revisit when:* M10 at the latest. It needs one `unsafe` call per platform and a
 graceful fallback where the operating system refuses.
-
-### 🟠 R-26 — Half the browser's toolbar does nothing
-**From:** M3 · **Due:** M4
-
-New folder, Add files, Extract, Rename and Remove are drawn, have tooltips, and
-have no `onclick`. That was defensible while the backend was invented — there
-was nothing real to do — and it is not defensible now that the buttons sit above
-a real vault, because a button that does nothing reads as a bug in the vault
-rather than an unfinished screen.
-
-Rename, Remove and New folder need only wiring: `cv-session` has all three and
-they are tested. Add files and Extract need progress and cancellation, which is
-R-08, which is M4.
-
-*Revisit when:* M4, or sooner for the three that are only wiring. Whichever
-comes first, the buttons that cannot work yet should say so rather than being
-silently inert.
 
 ### 🟡 R-23 — The password crosses to Rust as an ordinary string
 **From:** M3 · **Due:** M10
@@ -293,17 +279,6 @@ expensive than it is now. Also worth reconsidering the moment the project has a
 second contributor, since the assumption that main gets fixed immediately is
 really an assumption about one person being available.
 
-### 🟡 R-21 — A row bleeds past the sticky column header when scrolled
-**From:** M3 · **Due:** M3
-
-Scrolled deep into a long list, a sliver of a row is visible above the sticky
-`NAME / SIZE / MODIFIED` header. Purely cosmetic, and not diagnosed: the header
-has an opaque background and sits at `top: 0` of the scroll container, so the
-obvious explanation is not the right one.
-
-*Revisit when:* the next pass over the browser screen. Worth ten minutes with
-devtools rather than a guessed fix.
-
 ---
 
 ## Resolved
@@ -314,6 +289,8 @@ entry that was forgotten.
 | | Entry | Resolved in |
 |---|---|---|
 | 🟠 | **R-13** — the interface runs on a demonstration backend | M3 · `cv-desktop` puts a Tauri window over `cv-session`; the demonstration backend stays, for reviewing the interface in a browser |
+| 🟠 | **R-26** — half the browser's toolbar does nothing | M3 · new folder, rename and delete are wired; the two that need progress are disabled and say why |
+| 🟡 | **R-21** — a row bleeds past the sticky column header | M3 · not a gap — the header measures flush at every offset — but sub-pixel rounding at 2×; the header now paints its own background above itself, where the scroll box clips it |
 | 🟡 | **R-16** — tooltips do not avoid the window edge | M3 · measured when the tooltip mounts and slid back inside, 8 px from the edge |
 | 🟠 | **R-14** — the file list is not virtualised | M3 · only the visible rows exist in the DOM; 5000 entries render 33 |
 | 🟡 | **R-06** — Argon2id parameters are not calibrated | M3 · `kdf::calibrate` searches upward from the default and never below it |

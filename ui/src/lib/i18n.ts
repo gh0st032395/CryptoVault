@@ -67,6 +67,9 @@ const en = {
   sizeColumn: 'Size',
   modifiedColumn: 'Modified',
   itemsSelected: 'selected',
+  removeTitle: 'Delete permanently?',
+  removeBody:
+    'this cannot be undone. There is no trash yet, and a deleted file is not recoverable from the vault.',
 
   // Auto-lock
   autoLockTitle: 'Locking in',
@@ -96,8 +99,16 @@ const en = {
     'Wipe the keys from memory. Everything becomes unreadable again immediately.',
   tipNewFolder: 'Create a folder inside the vault. Its name is encrypted too.',
   tipAddFiles: 'Copy files into the vault. The originals are not touched.',
+  tipAddFilesSoon:
+    'Not built yet. Copying files in needs a progress bar and a way to stop it partway, which is the next milestone.',
   tipExtract:
     'Copy the selection out of the vault. Warning: the copy is not encrypted.',
+  tipExtractSoon:
+    'Not built yet. Writing files back out in readable form needs progress, cancellation, and the warning that goes with it.',
+  tipSortName: 'Sort by name. Click again to reverse it. Folders stay first either way.',
+  tipSortSize: 'Sort by size, largest first. Folders have no size of their own here.',
+  tipSortModified:
+    'Sort by the time the file was last changed, newest first. Files with no recorded time sort last.',
   tipRename: 'Change the name. Renaming a folder does not move what is inside it.',
   tipRemove: 'Delete permanently. There is no trash yet.',
   tipSearch: 'Filter by name within this folder.',
@@ -181,6 +192,9 @@ const it: Dictionary = {
   sizeColumn: 'Dimensione',
   modifiedColumn: 'Modificato',
   itemsSelected: 'selezionati',
+  removeTitle: 'Eliminare definitivamente?',
+  removeBody:
+    'l’operazione non si può annullare. Il cestino non c’è ancora, e un file eliminato non è più recuperabile dal vault.',
 
   autoLockTitle: 'Blocco fra',
   autoLockBody: 'Sei stato via. Il vault sta per bloccarsi.',
@@ -207,8 +221,18 @@ const it: Dictionary = {
     'Cancella le chiavi dalla memoria. Tutto torna illeggibile all’istante.',
   tipNewFolder: 'Crea una cartella dentro il vault. Anche il suo nome è cifrato.',
   tipAddFiles: 'Copia dei file nel vault. Gli originali non vengono toccati.',
+  tipAddFilesSoon:
+    'Non c’è ancora. Copiare file dentro richiede una barra di avanzamento e un modo per fermarla a metà: è la prossima milestone.',
   tipExtract:
     'Copia la selezione fuori dal vault. Attenzione: la copia non è cifrata.',
+  tipExtractSoon:
+    'Non c’è ancora. Riscrivere i file in chiaro richiede avanzamento, annullamento e l’avviso che li accompagna.',
+  tipSortName:
+    'Ordina per nome. Un altro clic inverte l’ordine. Le cartelle restano comunque in cima.',
+  tipSortSize:
+    'Ordina per dimensione, prima le più grandi. Qui le cartelle non hanno una dimensione propria.',
+  tipSortModified:
+    'Ordina per data dell’ultima modifica, prima i più recenti. I file senza data finiscono in fondo.',
   tipRename:
     'Cambia il nome. Rinominare una cartella non sposta quello che contiene.',
   tipRemove: 'Elimina definitivamente. Il cestino non c’è ancora.',
