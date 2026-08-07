@@ -1,0 +1,25 @@
+[package]
+name = "cv-session"
+description = "Which vaults exist, which are open, and everything a user interface can ask of them"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+cv-crypto.workspace = true
+cv-format.workspace = true
+cv-vault.workspace = true
+cv-vfs.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
