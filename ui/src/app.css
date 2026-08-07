@@ -1,0 +1,144 @@
+/*
+ * Design tokens and the base layer.
+ *
+ * The look is deliberately quiet. This is an application people open when they
+ * are being careful, and an interface that draws attention to itself competes
+ * with the thing they are actually trying to concentrate on. Almost everything
+ * is neutral; colour is reserved for the two states that matter — locked and
+ * unlocked — and for the one action on screen that is the point of the screen.
+ */
+
+:root {
+  /* Neutrals. A hint of blue keeps the greys from looking dead. */
+  --surface: #ffffff;
+  --surface-sunken: #f6f7f9;
+  --surface-raised: #ffffff;
+  --border: #e3e5ea;
+  --border-strong: #cbd0d9;
+  --text: #14161a;
+  --text-muted: #5d6470;
+  --text-faint: #8b929e;
+
+  /* One accent, a calm teal: distinctive without being loud. */
+  --accent: #1f6f6b;
+  --accent-hover: #1a5c58;
+  --accent-soft: #e6f2f1;
+  --accent-text: #ffffff;
+
+  /* States. Amber for locked, because it reads as "waiting", not "wrong". */
+  --locked: #a86a12;
+  --locked-soft: #fdf3e3;
+  --danger: #b3261e;
+  --danger-soft: #fceceb;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow: 0 1px 2px rgb(20 22 26 / 6%), 0 4px 12px rgb(20 22 26 / 6%);
+  --shadow-lifted: 0 2px 4px rgb(20 22 26 / 8%), 0 12px 28px rgb(20 22 26 / 12%);
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  /* One duration everywhere, short enough not to be felt as a delay. */
+  --quick: 120ms;
+}
+
+:root[data-theme='dark'] {
+  --surface: #16181c;
+  --surface-sunken: #101216;
+  --surface-raised: #1d2026;
+  --border: #2a2e36;
+  --border-strong: #3a4049;
+  --text: #eceef2;
+  --text-muted: #a2a9b5;
+  --text-faint: #757d8a;
+
+  --accent: #4db3ac;
+  --accent-hover: #63c4bd;
+  --accent-soft: #16302e;
+  --accent-text: #0c1211;
+
+  --locked: #d99a3d;
+  --locked-soft: #2c2317;
+  --danger: #e5786f;
+  --danger-soft: #2e1a19;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 12px rgb(0 0 0 / 28%);
+  --shadow-lifted: 0 2px 4px rgb(0 0 0 / 35%), 0 12px 28px rgb(0 0 0 / 40%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--surface-sunken);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+}
+
+h1 {
+  font-size: 21px;
+}
+h2 {
+  font-size: 16px;
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/*
+ * A visible focus ring on everything reachable by keyboard. Removing it is a
+ * common piece of visual tidying that quietly makes an application unusable
+ * without a mouse.
+ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect a system preference for less movement. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.muted {
+  color: var(--text-muted);
+}
+.faint {
+  color: var(--text-faint);
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

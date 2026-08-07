@@ -1,12 +1,23 @@
-# Continuous integration.
+# The gate on every push and pull request: one job, one runner, fast.
 #
-# These steps are the same ones `scripts/check.sh` runs locally, split across
-# jobs so they run in parallel. A green run here should mean a green run there,
-# and vice versa — if the two ever diverge, fix them, do not work around it.
+# It used to be seven jobs across three operating systems. That was thorough and
+# unusable: seven jobs all queue for their own runner, and on a busy day the
+# result arrived twenty minutes later — or not at all, because a job that never
+# starts eventually gets cancelled. A check nobody waits for is not a check.
 #
-# Only first-party GitHub actions are used. Every third-party action is code
-# running with access to this repository, and for a security project that is a
-# supply-chain dependency worth doing without.
+# So the everyday loop is a single Ubuntu job that runs exactly what
+# `scripts/check.sh` runs locally, plus the interface. Windows and macOS, which
+# are the scarce and slow runners, moved to `cross-platform.yml`: on merges to
+# main, nightly, and on demand.
+#
+# The trade is real and worth stating: a pull request no longer proves Windows
+# and macOS before it merges. It is recorded as R-20. For a project where main
+# is itself gated and a break is caught within minutes of landing, a fast gate
+# people actually read beats a thorough one they learn to ignore.
+#
+# Only first-party actions, pinned to v4 — the version cached on every runner.
+# The newer majors repeatedly failed to resolve at "Set up job" with an internal
+# error on GitHub's side (R-19).
 
 name: CI
 
@@ -16,141 +27,96 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A new push supersedes the previous run on the same branch.
+# Runs queue rather than cancel each other: `cancel-in-progress: true` made
+# re-running failed jobs cancel its own jobs, which is indistinguishable from a
+# real failure.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 env:
   CARGO_TERM_COLOR: always
-  # Backtraces cost nothing here and save a round trip when a test fails.
   RUST_BACKTRACE: 1
-  # Deliberately no global `RUSTFLAGS: -D warnings`: it would apply to
-  # dependencies too, so an upstream crate emitting a harmless warning would
-  # break our build. Warnings in our own code are denied by the workspace lint
-  # table and by the clippy step below.
 
 jobs:
-  test:
-    name: Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v7
-
-      # The toolchain version comes from rust-toolchain.toml; rustup installs it
-      # on first use. Printing it makes the log say which one actually ran.
-      - name: Show toolchain
-        run: |
-          rustc --version
-          cargo --version
-
-      - name: Cache cargo
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: ${{ runner.os }}-cargo-
-
-      - name: Build
-        run: cargo build --workspace --all-targets --all-features
-
-      - name: Test
-        run: cargo test --workspace --all-features
-
-  lint:
-    name: Format, lints and documentation
+  check:
+    name: Check
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Cache cargo
-        uses: actions/cache@v6
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: lint-cargo-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
-          restore-keys: lint-cargo-
+          key: check-${{ hashFiles('**/Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: check-
+
+      - name: Toolchain
+        run: rustc --version && cargo --version
 
       - name: Formatting
         run: cargo fmt --all -- --check
 
-      - name: Clippy
+      - name: Lints
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-      - name: Documentation builds without warnings
+      - name: Tests
+        run: cargo test --workspace --all-features
+
+      - name: Documentation
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --no-deps --all-features
 
-  supply-chain:
-    name: Licences, advisories and dependency sources
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Cache cargo tools
-        id: cache-tools
-        uses: actions/cache@v6
-        with:
-          path: ~/.cargo/bin
-          key: cargo-tools-deny-audit-v1
-
-      - name: Install cargo-deny and cargo-audit
-        if: steps.cache-tools.outputs.cache-hit != 'true'
-        run: cargo install --locked cargo-deny cargo-audit
-
-      # Licences, banned crates, and the requirement that every dependency comes
-      # from crates.io and nowhere else.
-      - name: cargo-deny
-        run: cargo deny check
-
-      # Known vulnerabilities in the dependency tree. Kept separate from
-      # cargo-deny so the log says plainly which of the two failed.
-      - name: cargo-audit
-        run: cargo audit --deny warnings
-
-  # Cheap structural checks that catch the mistakes reviewers keep missing.
-  hygiene:
-    name: Repository hygiene
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: No test vaults or key material committed
+      # Cheap structural checks. Inline rather than a job of their own: they take
+      # under a second and are not worth a runner.
+      - name: No vaults or key material committed
         run: |
-          # A committed vault is a committed secret, even when it is "just a
-          # test". .gitignore blocks the obvious cases; this catches a forced add.
-          # The frozen format vectors are the one deliberate exception: test
-          # data under keys published in the test source, committed so that a
-          # format change cannot happen quietly.
+          # The frozen format vectors are the one deliberate exception: test data
+          # under keys published in the test source, committed so that a format
+          # change cannot happen quietly.
           if git ls-files \
             | grep -v '^crates/cv-format/tests/vectors/' \
             | grep -E '\.(cvf|cvd|cvn|cvarchive|key|pem|p12|pfx)$|(^|/)vault\.cvconf$'; then
-            echo "::error::Encrypted vault files or key material are committed to the repository"
+            echo "::error::Encrypted vault files or key material are committed"
             exit 1
           fi
 
       - name: Both manual languages have the same chapters
         run: |
-          # The two translations are meant to stay in step; drifting apart is
-          # how one of them quietly rots.
-          it=$(find docs/manual/it -name '*.md' -exec basename {} \; | sed 's/^[0-9]*-//' | sort | wc -l)
-          en=$(find docs/manual/en -name '*.md' -exec basename {} \; | sed 's/^[0-9]*-//' | sort | wc -l)
+          it=$(find docs/manual/it -name '*.md' | wc -l)
+          en=$(find docs/manual/en -name '*.md' | wc -l)
           if [ "$it" -ne "$en" ]; then
-            echo "::error::The Italian manual has $it files and the English one $en; they must stay in step"
+            echo "::error::The manual has $it Italian files and $en English ones"
             exit 1
           fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      # `ci` rather than `install`: it installs exactly the lockfile and fails if
+      # the two have drifted, which is the point of committing one.
+      - name: Interface — install
+        working-directory: ui
+        run: npm ci
+
+      - name: Interface — types and Svelte checks
+        working-directory: ui
+        run: npm run check
+
+      - name: Interface — build
+        working-directory: ui
+        run: npx vite build

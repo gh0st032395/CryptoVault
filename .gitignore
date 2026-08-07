@@ -8,6 +8,8 @@ node_modules/
 dist/
 .vite/
 *.tsbuildinfo
+# …but the lockfile is committed: reproducible installs are the point.
+!ui/package-lock.json
 
 # Tauri
 src-tauri/target/

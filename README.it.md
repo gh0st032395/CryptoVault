@@ -8,7 +8,7 @@
 [![Licenza](https://img.shields.io/badge/licenza-MIT%20OR%20Apache--2.0-blue.svg)](#licenza)
 [![Stato](https://img.shields.io/badge/stato-pre--alpha%20(M2)-orange.svg)](#stato-del-progetto)
 
-[English](README.md) · [Piano di sviluppo](PLAN.md) · [Modello di minaccia](docs/THREAT_MODEL.md) · [Specifica del formato](docs/FORMAT_SPEC.md)
+[English](README.md) · [Piano di sviluppo](PLAN.md) · [Modello di minaccia](docs/THREAT_MODEL.md) · [Specifica del formato](docs/FORMAT_SPEC.md) · [Limiti noti](docs/REVISIT.md)
 
 </div>
 
