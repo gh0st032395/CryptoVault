@@ -10,10 +10,12 @@
   import type { Backend, Entry, VaultSummary } from '../backend';
   import { formatDate, formatSize } from '../backend';
   import type { Dictionary, Language } from '../i18n';
+  import { loadShowTree, saveShowTree } from '../theme';
   import Button from '../components/Button.svelte';
   import Dialog from '../components/Dialog.svelte';
   import Icon from '../components/Icon.svelte';
   import Tooltip from '../components/Tooltip.svelte';
+  import Tree from './Tree.svelte';
 
   interface Props {
     backend: Backend;
@@ -45,6 +47,7 @@
 
   let sortKey = $state<SortKey>('name');
   let ascending = $state(true);
+  let showTree = $state(loadShowTree());
 
   let action = $state<Action | null>(null);
   let actionBusy = $state(false);
@@ -303,11 +306,15 @@
   <div class="toolbar">
     <div class="trail">
       <Button
-        tip={t.tipVaultPath}
+        tip={t.tipTree}
         variant="ghost"
-        icon="lock"
+        icon="folder"
         iconOnly
-        label={vault.name}
+        label={t.folders}
+        onclick={() => {
+          showTree = !showTree;
+          saveShowTree(showTree);
+        }}
         tipPlacement="bottom"
       />
       <button class="crumb root" onclick={() => go('/')} type="button">{vault.name}</button>
@@ -372,70 +379,76 @@
     </div>
   {/if}
 
-  <div
-    class="listing"
-    bind:this={viewport}
-    onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
-  >
-    {#if problem !== null}
-      <div class="empty problem" role="alert">
-        <Icon name="warning" size={26} />
-        <h2>{t.couldNotRead}</h2>
-        <p class="muted">{problem}</p>
-      </div>
-    {:else if visible.length === 0}
-      <div class="empty">
-        <Icon name="folder" size={26} />
-        <h2>{t.emptyFolder}</h2>
-        <p class="muted">{t.emptyFolderBody}</p>
-      </div>
-    {:else}
-      <div class="head">
-        {#each columns as column (column.key)}
-          <span class="head-cell" class:right={column.right}>
-            <Tooltip text={column.tip} placement="bottom">
+  <div class="panes">
+    {#if showTree}
+      <Tree {backend} vaultId={vault.id} {path} {reloads} {t} onnavigate={go} />
+    {/if}
+
+    <div
+      class="listing"
+      bind:this={viewport}
+      onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
+    >
+      {#if problem !== null}
+        <div class="empty problem" role="alert">
+          <Icon name="warning" size={26} />
+          <h2>{t.couldNotRead}</h2>
+          <p class="muted">{problem}</p>
+        </div>
+      {:else if visible.length === 0}
+        <div class="empty">
+          <Icon name="folder" size={26} />
+          <h2>{t.emptyFolder}</h2>
+          <p class="muted">{t.emptyFolderBody}</p>
+        </div>
+      {:else}
+        <div class="head">
+          {#each columns as column (column.key)}
+            <span class="head-cell" class:right={column.right}>
+              <Tooltip text={column.tip} placement="bottom">
+                <button
+                  class="sort"
+                  class:on={sortKey === column.key}
+                  onclick={() => sortBy(column.key)}
+                  aria-pressed={sortKey === column.key}
+                  type="button"
+                >
+                  {column.label}
+                  {#if sortKey === column.key}
+                    <span class="arrow" class:up={ascending}><Icon name="chevron" size={11} /></span>
+                  {/if}
+                </button>
+              </Tooltip>
+            </span>
+          {/each}
+        </div>
+
+        <ul style:padding-top="{padTop}px" style:padding-bottom="{padBottom}px">
+          {#each window_ as entry (entry.name)}
+            <li>
               <button
-                class="sort"
-                class:on={sortKey === column.key}
-                onclick={() => sortBy(column.key)}
-                aria-pressed={sortKey === column.key}
+                class="row"
+                class:selected={selection.has(entry.name)}
+                onclick={(event) => toggle(entry.name, event)}
+                ondblclick={() => enter(entry)}
                 type="button"
               >
-                {column.label}
-                {#if sortKey === column.key}
-                  <span class="arrow" class:up={ascending}><Icon name="chevron" size={11} /></span>
-                {/if}
-              </button>
-            </Tooltip>
-          </span>
-        {/each}
-      </div>
-
-      <ul style:padding-top="{padTop}px" style:padding-bottom="{padBottom}px">
-        {#each window_ as entry (entry.name)}
-          <li>
-            <button
-              class="row"
-              class:selected={selection.has(entry.name)}
-              onclick={(event) => toggle(entry.name, event)}
-              ondblclick={() => enter(entry)}
-              type="button"
-            >
-              <span class="cell name">
-                <span class="glyph" class:dir={entry.kind === 'directory'}>
-                  <Icon name={entry.kind === 'directory' ? 'folder' : 'file'} size={16} />
+                <span class="cell name">
+                  <span class="glyph" class:dir={entry.kind === 'directory'}>
+                    <Icon name={entry.kind === 'directory' ? 'folder' : 'file'} size={16} />
+                  </span>
+                  <span class="text">{entry.name}</span>
                 </span>
-                <span class="text">{entry.name}</span>
-              </span>
-              <span class="cell right mono faint">
-                {entry.kind === 'directory' ? '—' : formatSize(entry.size)}
-              </span>
-              <span class="cell right faint">{formatDate(entry.modified, language)}</span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+                <span class="cell right mono faint">
+                  {entry.kind === 'directory' ? '—' : formatSize(entry.size)}
+                </span>
+                <span class="cell right faint">{formatDate(entry.modified, language)}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -557,8 +570,17 @@
     color: var(--accent);
   }
 
+  /* The tree and the list scroll independently, so a deep folder structure
+     does not drag the file list up and down with it. */
+  .panes {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
   .listing {
     flex: 1;
+    min-width: 0;
     overflow: auto;
     padding: 0 14px 20px;
   }

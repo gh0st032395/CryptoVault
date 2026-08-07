@@ -64,8 +64,13 @@ decision to make deliberately rather than by default.
 `Vault::read_dir` decrypts names only, but `stat` opens a file header per entry.
 A browser showing sizes for a directory of 10 000 files does 10 000 opens.
 
+Since M3 there is a second caller with less excuse: the folder tree reads a
+directory to find out which of its entries are folders, and pays for every size
+and timestamp in it to learn something it then throws away.
+
 *Revisit when:* M5 builds the search index — the same cache can carry sizes.
-Until then the interface should show sizes lazily rather than up front.
+Until then the interface should show sizes lazily rather than up front, and a
+listing that only needs names and kinds should be able to ask for only those.
 
 ### 🟠 R-04 — The VFS resolves a path on every operation
 **From:** M2 · **Due:** M14
@@ -138,6 +143,25 @@ place; the memory locking is not, so a derived key can be paged to disk.
 
 *Revisit when:* M10 at the latest. It needs one `unsafe` call per platform and a
 graceful fallback where the operating system refuses.
+
+### 🟡 R-29 — The folder tree is not windowed, and the file list is
+**From:** M3 · **Due:** —
+
+The file list renders only the rows in view (R-14). The tree beside it renders
+every folder that is open, all of them, in the DOM. A vault with a few hundred
+folders is fine; one with ten thousand in a single parent is the same defect
+R-14 existed to fix, in the other half of the same screen.
+
+It is deliberately not fixed yet, for two reasons. The tree is already flattened
+into a list of rows, which is the shape windowing needs — the work is small and
+can wait until it is needed. And a folder that big is speculative in a way a
+*file* directory that big is not: the demonstration vault has five thousand
+files in one folder because that is ordinary, and nobody has yet described a
+vault with five thousand sibling folders.
+
+*Revisit when:* somebody has a tree that stutters, or M5's index makes the shape
+of real vaults clearer. Not before — this is the kind of thing that gets built
+for a case that never arrives.
 
 ### 🟡 R-28 — Closing the window quits, so the tray goes with it
 **From:** M3 · **Due:** M9

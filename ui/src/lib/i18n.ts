@@ -67,6 +67,10 @@ const en = {
   sizeColumn: 'Size',
   modifiedColumn: 'Modified',
   itemsSelected: 'selected',
+  folders: 'Folders',
+  vaultRoot: 'All files',
+  expand: 'Show what is inside',
+  collapse: 'Hide what is inside',
   removeTitle: 'Delete permanently?',
   removeBody:
     'this cannot be undone. There is no trash yet, and a deleted file is not recoverable from the vault.',
@@ -105,6 +109,7 @@ const en = {
     'Copy the selection out of the vault. Warning: the copy is not encrypted.',
   tipExtractSoon:
     'Not built yet. Writing files back out in readable form needs progress, cancellation, and the warning that goes with it.',
+  tipTree: 'Show or hide the folder list beside the files. Useful on a narrow window.',
   tipSortName: 'Sort by name. Click again to reverse it. Folders stay first either way.',
   tipSortSize: 'Sort by size, largest first. Folders have no size of their own here.',
   tipSortModified:
@@ -192,6 +197,10 @@ const it: Dictionary = {
   sizeColumn: 'Dimensione',
   modifiedColumn: 'Modificato',
   itemsSelected: 'selezionati',
+  folders: 'Cartelle',
+  vaultRoot: 'Tutti i file',
+  expand: 'Mostra il contenuto',
+  collapse: 'Nascondi il contenuto',
   removeTitle: 'Eliminare definitivamente?',
   removeBody:
     'l’operazione non si può annullare. Il cestino non c’è ancora, e un file eliminato non è più recuperabile dal vault.',
@@ -227,6 +236,8 @@ const it: Dictionary = {
     'Copia la selezione fuori dal vault. Attenzione: la copia non è cifrata.',
   tipExtractSoon:
     'Non c’è ancora. Riscrivere i file in chiaro richiede avanzamento, annullamento e l’avviso che li accompagna.',
+  tipTree:
+    'Mostra o nasconde l’elenco delle cartelle accanto ai file. Utile con una finestra stretta.',
   tipSortName:
     'Ordina per nome. Un altro clic inverte l’ordine. Le cartelle restano comunque in cima.',
   tipSortSize:
