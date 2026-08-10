@@ -52,7 +52,7 @@ thiserror = "2.0"
 # crates into the tree, which means two copies of the code doing the actual
 # cryptography. Newest is not a virtue here; agreeing with each other is.
 aes-gcm = "0.10"              # AES-256-GCM, the default content cipher
-chacha20poly1305 = "0.10"     # XChaCha20-Poly1305, the alternative (alg_id 0x02)
+chacha20poly1305 = "0.11"     # XChaCha20-Poly1305, the alternative (alg_id 0x02)
 aes-siv = "0.7"               # Deterministic AEAD for filenames
 argon2 = "0.5"                # Password-based key derivation
 hkdf = "0.12"                 # Sub-key derivation from the master seed
