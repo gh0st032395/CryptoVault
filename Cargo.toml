@@ -57,7 +57,7 @@ aes-siv = "0.7"               # Deterministic AEAD for filenames
 argon2 = "0.5"                # Password-based key derivation
 hkdf = "0.12"                 # Sub-key derivation from the master seed
 hmac = "0.12"                 # Config authentication and directory placement
-sha2 = "0.10"
+sha2 = "0.11"
 rand = "0.8"                  # OsRng only; no user-visible randomness is seeded
 subtle = "2.6"                # Constant-time comparison
 zeroize = { version = "1.8", features = ["derive"] }
