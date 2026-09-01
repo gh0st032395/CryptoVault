@@ -57,7 +57,7 @@ jobs:
       # Windows and macOS ship their own webview, so there is nothing to
       # install — but `cv-desktop` still embeds `ui/dist` at compile time, and
       # without it the build below fails on a clean checkout.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
